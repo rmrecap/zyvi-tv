@@ -17,10 +17,8 @@ subprojects {
 }
 subprojects {
     afterEvaluate {
-        val ext = extensions.findByName("android")
-        if (ext is com.android.build.gradle.BaseExtension) {
-            ext.compileSdkVersion(36)
-        }
+        val android = extensions.findByName("android") ?: return@afterEvaluate
+        (android as groovy.lang.GroovyObject).invokeMethod("compileSdk", 36)
     }
 }
 
