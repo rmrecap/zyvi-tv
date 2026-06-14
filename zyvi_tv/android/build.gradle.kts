@@ -16,14 +16,6 @@ subprojects {
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 subprojects {
-    afterEvaluate {
-        @Suppress("UNCHECKED_CAST")
-        (extensions.findByName("android") as? com.android.build.gradle.LibraryExtension)?.let {
-            if (it.namespace == null) {
-                it.namespace = "com.example.zyvi_tv"
-            }
-        }
-    }
     project.evaluationDependsOn(":app")
 }
 
