@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:better_player/better_player.dart';
+import 'package:better_player_enhanced/better_player.dart';
 
 enum BandwidthProfile { low, high }
 

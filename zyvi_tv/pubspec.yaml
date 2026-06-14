@@ -9,18 +9,15 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_riverpod: ^2.5.1
+  flutter_riverpod: ^2.6.1
   firebase_core: ^3.4.0
   firebase_auth: ^5.2.0
   cloud_firestore: ^5.4.0
-  better_player: ^0.0.84
-  cached_network_image: ^3.3.1
+  better_player_enhanced: ^1.0.2
+  cached_network_image: ^3.4.0
   shimmer: ^3.0.0
-  google_fonts: ^6.1.0
+  google_fonts: ^6.3.3
   google_mobile_ads: ^9.0.0
-
-dependency_overrides:
-  collection: 1.18.0
 
 dev_dependencies:
   flutter_test:

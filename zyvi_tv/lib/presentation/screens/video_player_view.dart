@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:better_player/better_player.dart';
+import 'package:better_player_enhanced/better_player.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/channel_model.dart';
 import '../../services/smart_player_service.dart';
