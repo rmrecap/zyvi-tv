@@ -15,25 +15,8 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
-subprojects {
-    afterEvaluate {
-        val ext = extensions.findByName("android")
-        if (ext is com.android.build.gradle.BaseExtension) {
-            ext.compileSdkVersion(36)
-            ext.defaultConfig.targetSdk = 36
-            if (ext.namespace == null) {
-                val manifestFile = file("src/main/AndroidManifest.xml")
-                if (manifestFile.exists()) {
-                    val doc = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(manifestFile)
-                    val pkg = doc.documentElement?.getAttribute("package")
-                    if (pkg != null) {
-                        ext.namespace = pkg
-                    }
-                }
-            }
-        }
-    }
-    project.evaluationDependsOn(":app")
+tasks.withType<com.android.build.gradle.tasks.CheckAarMetadataWorkAction>().configureEach {
+    compileSdk = 36
 }
 
 tasks.register<Delete>("clean") {
