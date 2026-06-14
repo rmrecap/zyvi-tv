@@ -19,7 +19,7 @@ subprojects {
     afterEvaluate {
         val ext = extensions.findByName("android")
         if (ext is com.android.build.gradle.BaseExtension) {
-            ext.compileSdk = 36
+            ext.compileSdkVersion(36)
             ext.defaultConfig.targetSdk = 36
             if (ext.namespace == null) {
                 val manifestFile = file("src/main/AndroidManifest.xml")
