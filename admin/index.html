@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zyvi TV — Admin Console</title>
+
+  <!-- TailwindCSS v3 CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            zyvi: {
+              bg:      '#0A0E1A',
+              deep:    '#020408',
+              surface: '#111625',
+              light:   '#1A2035',
+              border:  '#1F2C4C',
+              purple:  '#7F00FF',
+              pink:    '#E100FF',
+              neon:    '#00FFCC',
+              muted:   '#8A99AD',
+            },
+          },
+          fontFamily: {
+            sans: ['Inter', 'Segoe UI', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Firebase SDK v10 compat -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js">
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js">
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js">
+  </script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+    .transition-bg { transition: background-color 0.2s, border-color 0.2s; }
+
+    /* Toast */
+    .toast {
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0A0E1A; }
+    ::-webkit-scrollbar-thumb { background: #1F2C4C; border-radius: 3px; }
+
+    /* Shimmer */
+    .shimmer {
+      background: linear-gradient(90deg,
+        #111625 25%,
+        #1A2035 50%,
+        #111625 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* Tab buttons */
+    .tab-btn-active {
+      background: linear-gradient(135deg, #7F00FF, #E100FF) !important;
+      color: white !important;
+      box-shadow: 0 4px 20px rgba(127,0,255,0.3) !important;
+    }
+
+    /* Preview table */
+    #previewTableWrap::-webkit-scrollbar { width: 4px; height: 4px; }
+    #previewTableWrap::-webkit-scrollbar-track { background: #0A0E1A; }
+    #previewTableWrap::-webkit-scrollbar-thumb { background: #1F2C4C; border-radius: 2px; }
+    #previewBody tr:hover { background: rgba(127,0,255,0.04); }
+    #previewBody td { border-bottom: 1px solid rgba(31,44,76,0.4); padding: 10px 12px; vertical-align: middle; }
+    #previewBody tr:last-child td { border-bottom: none; }
+
+    /* Focus ring */
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid #7F00FF;
+      outline-offset: 1px;
+    }
+
+    /* Source row */
+    .source-entry { transition: all 0.2s; }
+    .source-entry-removing {
+      opacity: 0; transform: translateX(-20px);
+      height: 0; margin: 0; padding: 0; overflow: hidden;
+    }
+
+    /* PIN digit slots */
+    .pin-slot {
+      width: 52px; height: 64px;
+      border: 2px solid #1F2C4C;
+      border-radius: 14px;
+      background: #0A0E1A;
+      color: #fff;
+      font-size: 28px;
+      font-weight: 700;
+      text-align: center;
+      caret-color: #7F00FF;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .pin-slot:focus {
+      border-color: #7F00FF;
+      box-shadow: 0 0 0 3px rgba(127, 0, 255, 0.25);
+      outline: none;
+    }
+    .pin-slot.filled {
+      border-color: rgba(127, 0, 255, 0.5);
+      background: #111625;
+    }
+
+    /* PIN shake on wrong */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%      { transform: translateX(-6px); }
+      40%      { transform: translateX(6px); }
+      60%      { transform: translateX(-4px); }
+      80%      { transform: translateX(4px); }
+    }
+    .shake {
+      animation: shake 0.35s ease-out;
+    }
+
+    /* Gate transitions */
+    .gate {
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    .gate-exit {
+      opacity: 0;
+      transform: scale(0.96);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="bg-[#0A0E1A] text-gray-200 min-h-screen antialiased overflow-x-hidden">
+
+  <!-- ============================== -->
+  <!--           TOAST HOST           -->
+  <!-- ============================== -->
+  <div id="toastHost"
+       class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ============================== -->
+  <!--        CONFIRM DIALOG          -->
+  <!-- ============================== -->
+  <div id="confirmOverlay"
+       class="fixed inset-0 z-40 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl">
+      <p id="confirmMessage" class="text-gray-200 text-sm leading-relaxed mb-6"></p>
+      <div class="flex gap-3 justify-end">
+        <button id="confirmCancel"
+                class="px-4 py-2 rounded-xl bg-[#1A2035] text-gray-300 text-sm font-medium hover:brightness-125 transition-all">Cancel</button>
+        <button id="confirmOk"
+                class="px-4 py-2 rounded-xl bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white text-sm font-medium hover:brightness-110 transition-all">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================== -->
+  <!--        MAIN WRAPPER            -->
+  <!-- ============================== -->
+  <div class="max-w-6xl mx-auto px-4 py-6">
+
+    <!-- ===== HEADER (always visible) ===== -->
+    <header class="flex items-center justify-between pb-4 mb-6 border-b border-[#1F2C4C]">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7F00FF] to-[#E100FF] flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-purple-500/20">
+          Z
+        </div>
+        <h1 class="text-xl font-bold bg-gradient-to-r from-[#7F00FF] to-[#E100FF] bg-clip-text text-transparent">
+          Zyvi TV Console
+        </h1>
+      </div>
+      <div id="headerRight" class="flex items-center gap-3"></div>
+    </header>
+
+    <!-- ========================================================== -->
+    <!--  GATE 1 — PIN / PASSWORD SHIELD                             -->
+    <!-- ========================================================== -->
+    <section id="gatePin" class="gate flex items-center justify-center min-h-[55vh]">
+      <div class="bg-[#111625] border border-[#1F2C4C] rounded-2xl p-8 max-w-md w-full text-center">
+        <div class="w-14 h-14 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-[#7F00FF] to-[#E100FF] flex items-center justify-center text-white text-xl shadow-lg shadow-purple-500/20">
+          &#x1F510;
+        </div>
+        <h2 class="text-white text-lg font-semibold mb-1">Access Required</h2>
+        <p class="text-[#8A99AD] text-sm mb-6">
+          Enter the admin PIN to unlock the console.
+        </p>
+
+        <!-- PIN digit inputs -->
+        <div class="flex justify-center gap-3 mb-6" id="pinSlots">
+          <input type="password" class="pin-slot" maxlength="1" inputmode="numeric" pattern="[0-9]" autofocus />
+          <input type="password" class="pin-slot" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+          <input type="password" class="pin-slot" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+          <input type="password" class="pin-slot" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+        </div>
+
+        <p id="pinError" class="text-red-400 text-xs mb-4 hidden">Incorrect PIN. Try again.</p>
+
+        <p class="text-[#8A99AD] text-xs">
+          <span class="opacity-40">Default: </span>
+          <span class="font-mono tracking-wider opacity-60">2468</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- ========================================================== -->
+    <!--  GATE 2 — FIREBASE AUTH (Google Sign-in)                    -->
+    <!-- ========================================================== -->
+    <section id="gateAuth" class="gate hidden items-center justify-center min-h-[55vh]">
+      <div class="bg-[#111625] border border-[#1F2C4C] rounded-2xl p-8 max-w-sm w-full text-center">
+        <div class="w-14 h-14 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-[#7F00FF] to-[#E100FF] flex items-center justify-center text-white text-2xl shadow-lg shadow-purple-500/20">
+          &#x1F512;
+        </div>
+        <h2 class="text-white text-lg font-semibold mb-2">Admin Access</h2>
+        <p class="text-[#8A99AD] text-sm mb-6">
+          Sign in with your authorized Google account to manage streams.
+        </p>
+        <button id="signInBtn"
+                class="w-full py-3 rounded-xl bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white font-semibold text-sm hover:brightness-110 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
+          Sign in with Google
+        </button>
+        <button id="backToPinBtn"
+                class="mt-3 text-[#8A99AD] text-xs hover:text-gray-300 transition-colors underline underline-offset-2">
+          &larr; Back to PIN
+        </button>
+        <p id="authError" class="text-red-400 text-xs mt-3 hidden"></p>
+      </div>
+    </section>
+
+    <!-- ========================================================== -->
+    <!--  ADMIN PANEL (fully authenticated)                          -->
+    <!-- ========================================================== -->
+    <section id="adminPanel" class="hidden space-y-6">
+
+      <!-- ---- TAB NAVIGATION ---- -->
+      <div class="flex gap-1 bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl p-1">
+        <button type="button" id="tabChannelsBtn"
+                class="tab-btn flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white shadow-lg shadow-purple-500/20">
+          &#x1F4FA; Channels
+        </button>
+        <button type="button" id="tabM3UBtn"
+                class="tab-btn flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all text-[#8A99AD] hover:text-gray-200 hover:bg-[#1A2035]">
+          &#x1F4E5; Bulk M3U Importer
+        </button>
+        <button type="button" id="tabMonetizationBtn"
+                class="tab-btn flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all text-[#8A99AD] hover:text-gray-200 hover:bg-[#1A2035]">
+          &#x1F4B0; Monetization
+        </button>
+      </div>
+
+      <!-- ===== TAB: CHANNELS ===== -->
+      <div id="tabChannels" class="space-y-6">
+
+        <!-- ---- CHANNEL FORM ---- -->
+        <div class="bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
+          <h3 class="text-white font-semibold text-base mb-5 flex items-center gap-2">
+            <span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>
+            <span id="formTitle">Publish Channel</span>
+          </h3>
+
+          <form id="channelForm" novalidate>
+            <input type="hidden" id="editDocId" value="" />
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label for="channelName" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">
+                  Channel Name <span class="text-red-400">*</span>
+                </label>
+                <input type="text" id="channelName" required
+                       placeholder="e.g. T-Sports Live"
+                       class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm placeholder-gray-600 transition-bg focus:border-[#7F00FF]" />
+                <p class="text-red-400 text-xs mt-1 hidden" id="nameError">Required</p>
+              </div>
+              <div>
+                <label for="channelCategory" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">
+                  Category
+                </label>
+                <select id="channelCategory"
+                        class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm transition-bg focus:border-[#7F00FF]">
+                  <option value="Cricket">Cricket</option>
+                  <option value="Football">Football</option>
+                  <option value="Basketball">Basketball</option>
+                  <option value="Tennis">Tennis</option>
+                  <option value="Live TV" selected>General Live TV</option>
+                  <option value="Movies">Movies</option>
+                  <option value="Music">Music</option>
+                  <option value="News">News</option>
+                </select>
+              </div>
+              <div>
+                <label for="channelLogo" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">
+                  Logo URL
+                </label>
+                <input type="url" id="channelLogo"
+                       placeholder="https://example.com/logo.png"
+                       class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm placeholder-gray-600 transition-bg focus:border-[#7F00FF]" />
+              </div>
+            </div>
+
+            <!-- Stream Sources -->
+            <div class="mb-4">
+              <label class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-2">
+                Stream Sources <span class="text-red-400">*</span>
+              </label>
+              <p class="text-[#8A99AD] text-xs mb-2 opacity-70">
+                Each source requires a server name, .m3u8 / HLS URL, and quality rating.
+              </p>
+              <div id="sourcesContainer" class="space-y-2"></div>
+              <button type="button" id="addSourceBtn"
+                      class="mt-2 w-full py-2.5 rounded-xl border border-dashed border-[#1F2C4C] text-[#8A99AD] text-sm hover:border-[#7F00FF] hover:text-[#7F00FF] transition-all">
+                + Add Stream Source
+              </button>
+              <p class="text-red-400 text-xs mt-1 hidden" id="sourcesError">At least one valid source required (name + URL)</p>
+            </div>
+
+            <!-- Live toggle -->
+            <div class="flex items-center gap-3 mb-5">
+              <button type="button" id="liveToggle" role="switch" aria-checked="true"
+                      class="relative w-10 h-5 rounded-full bg-gradient-to-r from-[#7F00FF] to-[#E100FF] transition-colors">
+                <span id="liveToggleThumb"
+                      class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"></span>
+              </button>
+              <label for="liveToggle" class="text-sm text-gray-300 cursor-pointer select-none">
+                Broadcast as <span class="text-[#00FFCC] font-semibold">LIVE</span>
+              </label>
+              <span class="text-[#8A99AD] text-xs opacity-60 ml-1">
+                &mdash; toggle <span class="font-mono">isLive</span>; mobile app updates instantly
+              </span>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex flex-wrap gap-3">
+              <button type="submit" id="submitBtn"
+                      class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white font-semibold text-sm hover:brightness-110 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
+                Push Update
+              </button>
+              <button type="button" id="resetBtn"
+                      class="px-6 py-2.5 rounded-xl bg-[#1A2035] text-gray-300 font-medium text-sm hover:brightness-125 transition-all">
+                Clear
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- ---- CHANNELS LIST ---- -->
+        <div class="bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-white font-semibold text-base flex items-center gap-2">
+              <span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>
+              Published Channels
+            </h3>
+            <span id="channelCount" class="text-[#8A99AD] text-xs font-medium"></span>
+          </div>
+          <p class="text-[#8A99AD] text-xs mb-4 opacity-60">
+            Real-time Firestore sync &mdash; changes reflect on mobile devices immediately.
+          </p>
+          <div id="channelsList" class="space-y-2">
+            <!-- populated by Firestore onSnapshot -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB: BULK M3U IMPORTER ===== -->
+      <div id="tabM3U" class="hidden space-y-6">
+
+        <!-- ---- M3U TEXTAREA ---- -->
+        <div class="bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
+          <h3 class="text-white font-semibold text-base mb-5 flex items-center gap-2">
+            <span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>
+            Paste M3U Playlist
+          </h3>
+          <p class="text-[#8A99AD] text-xs mb-3 opacity-70">
+            Paste your standard <code class="text-[#7F00FF]">#EXTM3U</code> playlist text below. The parser extracts
+            channel name, logo URL, stream link, and auto-categorizes based on content keywords.
+          </p>
+          <textarea id="m3uInput" rows="10"
+                    placeholder="#EXTM3U&#10;#EXTINF:-1 tvg-name=&quot;HBO HD&quot; tvg-logo=&quot;https://...&quot;,HBO HD&#10;https://cdn.example.com/hbo.m3u8&#10;#EXTINF:-1 tvg-name=&quot;ESPN 1&quot; tvg-logo=&quot;https://...&quot;,ESPN 1&#10;https://cdn.example.com/espn.m3u8"
+                    class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-4 py-3 text-gray-100 text-sm font-mono placeholder-gray-700 focus:border-[#7F00FF] transition-bg resize-y"></textarea>
+          <div class="flex items-center gap-3 mt-4">
+            <button type="button" id="parseM3UBtn"
+                    class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white font-semibold text-sm hover:brightness-110 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
+              &#x1F50D; Parse M3U
+            </button>
+            <span id="parseStats" class="text-[#8A99AD] text-xs"></span>
+          </div>
+        </div>
+
+        <!-- ---- PARSED PREVIEW ---- -->
+        <div id="m3uPreviewSection" class="hidden bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-white font-semibold text-base flex items-center gap-2">
+              <span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>
+              Parsed Channels Preview
+            </h3>
+            <span id="previewCount" class="text-[#8A99AD] text-xs font-medium"></span>
+          </div>
+          <div id="previewTableWrap" class="overflow-x-auto max-h-80 overflow-y-auto rounded-xl border border-[#1F2C4C]">
+            <table class="w-full text-sm">
+              <thead class="sticky top-0 bg-[#0A0E1A]">
+                <tr class="text-[#8A99AD] text-xs uppercase tracking-wider">
+                  <th class="text-left px-3 py-2.5 font-semibold">#</th>
+                  <th class="text-left px-3 py-2.5 font-semibold">Channel</th>
+                  <th class="text-left px-3 py-2.5 font-semibold">Category</th>
+                  <th class="text-left px-3 py-2.5 font-semibold">Stream URL</th>
+                  <th class="text-left px-3 py-2.5 font-semibold">Logo</th>
+                </tr>
+              </thead>
+              <tbody id="previewBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ---- VALIDATE & IMPORT ---- -->
+        <div id="m3uImportSection" class="hidden bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
+          <h3 class="text-white font-semibold text-base mb-5 flex items-center gap-2">
+            <span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>
+            Validate Links &amp; Import
+          </h3>
+          <p class="text-[#8A99AD] text-xs mb-4 opacity-70">
+            Each stream URL will be probed with a <code class="text-[#7F00FF]">HEAD</code> request. Dead links (timeout,
+            404, unreachable) are automatically removed before saving.
+          </p>
+
+          <!-- Progress bar -->
+          <div id="progressWrap" class="hidden mb-4">
+            <div class="flex items-center justify-between text-xs text-[#8A99AD] mb-1.5">
+              <span id="progressLabel">Validating...</span>
+              <span id="progressPercent">0%</span>
+            </div>
+            <div class="w-full h-2.5 bg-[#0A0E1A] rounded-full overflow-hidden">
+              <div id="progressBar" class="h-full rounded-full bg-gradient-to-r from-[#7F00FF] to-[#E100FF] transition-all duration-300" style="width:0%"></div>
+            </div>
+          </div>
+
+          <!-- Summary -->
+          <div id="importSummary" class="hidden grid grid-cols-2 gap-4 mb-5">
+            <div class="bg-emerald-900/20 border border-emerald-700/30 rounded-xl p-4 text-center">
+              <div id="activeCount" class="text-2xl font-bold text-[#00FFCC]">0</div>
+              <div class="text-[#8A99AD] text-xs mt-1">Active Channels Saved</div>
+            </div>
+            <div class="bg-red-900/20 border border-red-700/30 rounded-xl p-4 text-center">
+              <div id="deadCount" class="text-2xl font-bold text-red-400">0</div>
+              <div class="text-[#8A99AD] text-xs mt-1">Dead Links Removed</div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-3">
+            <button type="button" id="validateImportBtn"
+                    class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white font-semibold text-sm hover:brightness-110 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
+              &#x2705; Validate &amp; Import to Firestore
+            </button>
+            <button type="button" id="m3uResetBtn"
+                    class="px-6 py-2.5 rounded-xl bg-[#1A2035] text-gray-300 font-medium text-sm hover:brightness-125 transition-all">
+              Clear All
+            </button>
+          </div>
+        </div>
+
+        <!-- ---- GLOBAL IPTV SYNC ---- -->
+        <div class="bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
+          <h3 class="text-white font-semibold text-base mb-5 flex items-center gap-2">
+            <span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>
+            Global IPTV Library Sync
+          </h3>
+          <p class="text-[#8A99AD] text-xs mb-4 opacity-70">
+            Fetches the public IPTV channel index from <code class="text-[#7F00FF]">iptv-org.github.io</code>,
+            validates each stream URL with a <code class="text-[#7F00FF]">HEAD</code> probe, and saves
+            verified channels directly to <code class="text-[#7F00FF]">zyvi_channels</code>.
+            Existing channels are <strong>not</strong> duplicated (deduped by URL).
+          </p>
+
+          <div class="flex flex-wrap items-center gap-3 mb-4">
+            <button type="button" id="syncGlobalBtn"
+                    class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white font-semibold text-sm hover:brightness-110 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
+              &#x1F310; Sync Global IPTV Library
+            </button>
+            <span id="syncGlobalStatus" class="text-[#8A99AD] text-xs"></span>
+          </div>
+
+          <!-- Global sync progress -->
+          <div id="globalProgressWrap" class="hidden mb-4">
+            <div class="flex items-center justify-between text-xs text-[#8A99AD] mb-1.5">
+              <span id="globalProgressLabel">Initializing...</span>
+              <span id="globalProgressPercent">0%</span>
+            </div>
+            <div class="w-full h-2.5 bg-[#0A0E1A] rounded-full overflow-hidden">
+              <div id="globalProgressBar" class="h-full rounded-full bg-gradient-to-r from-[#7F00FF] to-[#E100FF] transition-all duration-300" style="width:0%"></div>
+            </div>
+          </div>
+
+          <!-- Global sync summary -->
+          <div id="globalSummary" class="hidden grid grid-cols-3 gap-3 mb-2">
+            <div class="bg-emerald-900/20 border border-emerald-700/30 rounded-xl p-3 text-center">
+              <div id="globalActiveCount" class="text-xl font-bold text-[#00FFCC]">0</div>
+              <div class="text-[#8A99AD] text-xs mt-0.5">Saved</div>
+            </div>
+            <div class="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-center">
+              <div id="globalDeadCount" class="text-xl font-bold text-red-400">0</div>
+              <div class="text-[#8A99AD] text-xs mt-0.5">Dead Links</div>
+            </div>
+            <div class="bg-yellow-900/20 border border-yellow-700/30 rounded-xl p-3 text-center">
+              <div id="globalDuplicateCount" class="text-xl font-bold text-yellow-400">0</div>
+              <div class="text-[#8A99AD] text-xs mt-0.5">Duplicates</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB: MONETIZATION ===== -->
+      <div id="tabMonetization" class="hidden space-y-6">
+
+        <div class="bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
+          <h3 class="text-white font-semibold text-base mb-5 flex items-center gap-2">
+            <span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>
+            AdMob Configuration
+          </h3>
+          <p class="text-[#8A99AD] text-xs mb-5 opacity-70">
+            Changes to the monetization config apply <strong>live</strong> to all running mobile app instances
+            without a store update. The <code class="text-[#7F00FF]">zyvi_config/monetization</code> document is
+            watched by <code class="text-[#7F00FF]">AdManagerService</code> via Firestore <code>snapshots()</code>.
+          </p>
+
+          <form id="monetizationForm" novalidate>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label for="monAppId" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">
+                  App ID
+                </label>
+                <input type="text" id="monAppId"
+                       placeholder="ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy"
+                       class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm placeholder-gray-600 transition-bg focus:border-[#7F00FF]" />
+              </div>
+              <div>
+                <label for="monBannerId" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">
+                  Banner Ad Unit ID
+                </label>
+                <input type="text" id="monBannerId"
+                       placeholder="ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy"
+                       class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm placeholder-gray-600 transition-bg focus:border-[#7F00FF]" />
+              </div>
+              <div>
+                <label for="monInterstitialId" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">
+                  Interstitial Ad Unit ID
+                </label>
+                <input type="text" id="monInterstitialId"
+                       placeholder="ca-app-pub-xxxxxxxxxxxxxxxx/zzzzzzzzzz"
+                       class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm placeholder-gray-600 transition-bg focus:border-[#7F00FF]" />
+              </div>
+              <div class="flex items-end pb-2.5">
+                <div class="flex items-center gap-3">
+                  <button type="button" id="monEnabledToggle" role="switch" aria-checked="false"
+                          class="relative w-10 h-5 rounded-full bg-[#1A2035] transition-colors">
+                    <span id="monEnabledThumb"
+                          class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-gray-400 shadow transition-transform"></span>
+                  </button>
+                  <label for="monEnabledToggle" class="text-sm text-gray-300 cursor-pointer select-none">
+                    Ads <span class="text-[#00FFCC] font-semibold">Enabled</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Status indicator -->
+            <div class="flex items-center gap-2 mb-5 text-xs">
+              <span id="monStatusDot" class="w-2 h-2 rounded-full bg-[#1A2035]"></span>
+              <span id="monStatusText" class="text-[#8A99AD]">Not loaded</span>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+              <button type="submit" id="monSaveBtn"
+                      class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white font-semibold text-sm hover:brightness-110 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
+                Save Configuration
+              </button>
+              <button type="button" id="monRefreshBtn"
+                      class="px-6 py-2.5 rounded-xl bg-[#1A2035] text-gray-300 font-medium text-sm hover:brightness-125 transition-all">
+                Refresh from Firestore
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- ---- Live config preview ---- -->
+        <div class="bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
+          <h3 class="text-white font-semibold text-base mb-4 flex items-center gap-2">
+            <span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>
+            Real-Time Status
+          </h3>
+          <p class="text-[#8A99AD] text-xs mb-4 opacity-70">
+            Current document values in <code class="text-[#7F00FF]">zyvi_config/monetization</code>.
+          </p>
+          <div id="monPreview" class="bg-[#0A0E1A] rounded-xl p-4 font-mono text-xs text-[#8A99AD] whitespace-pre-wrap">
+            Loading...
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </div>
+
+  <!-- ============================================================ -->
+  <!--                     JAVASCRIPT                                -->
+  <!-- ============================================================ -->
+  <script>
+    'use strict';
+
+    // ===== CONFIG =====
+    const ADMIN_PIN = '2468';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBi5CpO6YMco94JdkHq2tTWLQyxwo7CIkU",
+      authDomain: "zyvi-tv.firebaseapp.com",
+      projectId: "zyvi-tv",
+      storageBucket: "zyvi-tv.firebasestorage.app",
+      messagingSenderId: "836039862469",
+      appId: "1:836039862469:web:aeb6b1ed21a101bff968ac",
+      measurementId: "G-JHVYVB8W9Y"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    // ===== DOM refs =====
+    const $ = (id) => document.getElementById(id);
+    const toastHost      = $('toastHost');
+    const gatePin        = $('gatePin');
+    const gateAuth       = $('gateAuth');
+    const adminPanel     = $('adminPanel');
+    const headerRight    = $('headerRight');
+    const pinSlots       = $('pinSlots');
+    const pinError       = $('pinError');
+    const signInBtn      = $('signInBtn');
+    const backToPinBtn   = $('backToPinBtn');
+    const authError      = $('authError');
+    const channelForm    = $('channelForm');
+    const editDocId      = $('editDocId');
+    const formTitle      = $('formTitle');
+    const channelName    = $('channelName');
+    const channelCat     = $('channelCategory');
+    const channelLogo    = $('channelLogo');
+    const sourcesCont    = $('sourcesContainer');
+    const addSourceBtn   = $('addSourceBtn');
+    const liveToggle     = $('liveToggle');
+    const liveToggleTh   = $('liveToggleThumb');
+    const submitBtn      = $('submitBtn');
+    const resetBtn       = $('resetBtn');
+    const nameError      = $('nameError');
+    const sourcesError   = $('sourcesError');
+    const channelsList   = $('channelsList');
+    const channelCount   = $('channelCount');
+    const confirmOverlay = $('confirmOverlay');
+    const confirmMsg     = $('confirmMessage');
+    const confirmOk      = $('confirmOk');
+    const confirmCancel  = $('confirmCancel');
+
+    // ===== State =====
+    let sourceCounter = 0;
+    let isLive = true;
+    let unsubscribe = null;
+    let pendingConfirm = null;
+
+    // ===== Gate transition helper =====
+    function transitionGate(from, to) {
+      from.classList.add('gate-exit');
+      setTimeout(() => {
+        from.classList.add('hidden');
+        from.classList.remove('gate-exit');
+        to.classList.remove('hidden');
+        // trigger reflow then fade in
+        void to.offsetWidth;
+      }, 400);
+    }
+
+    // ===== Utils =====
+    function showToast(msg, type = 'success') {
+      const el = document.createElement('div');
+      el.className = `toast pointer-events-auto px-4 py-3 rounded-xl text-sm font-medium shadow-xl ${
+        type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+      }`;
+      el.textContent = msg;
+      toastHost.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transition = 'opacity 0.3s';
+        setTimeout(() => el.remove(), 300);
+      }, 3000);
+    }
+
+    function showConfirm(msg) {
+      return new Promise((resolve) => {
+        confirmMsg.textContent = msg;
+        confirmOverlay.classList.remove('hidden');
+        confirmOverlay.classList.add('flex');
+        pendingConfirm = resolve;
+      });
+    }
+
+    confirmOk.addEventListener('click', () => {
+      confirmOverlay.classList.add('hidden');
+      confirmOverlay.classList.remove('flex');
+      if (pendingConfirm) { pendingConfirm(true); pendingConfirm = null; }
+    });
+    confirmCancel.addEventListener('click', () => {
+      confirmOverlay.classList.add('hidden');
+      confirmOverlay.classList.remove('flex');
+      if (pendingConfirm) { pendingConfirm(false); pendingConfirm = null; }
+    });
+
+    function escapeHtml(str) {
+      const d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    // ================================================================
+    //  GATE 1 — PIN ENTRY
+    // ================================================================
+
+    const pinInputs = Array.from(pinSlots.querySelectorAll('.pin-slot'));
+
+    // Auto-advance to next slot on digit entry
+    pinInputs.forEach((input, i) => {
+      input.addEventListener('input', () => {
+        if (input.value.length === 1 && i < pinInputs.length - 1) {
+          input.classList.add('filled');
+          pinInputs[i + 1].focus();
+        }
+        if (i === pinInputs.length - 1 && input.value.length === 1) {
+          input.classList.add('filled');
+          validatePin();
+        }
+      });
+
+      // Handle backspace: go to previous slot, clear current
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !input.value && i > 0) {
+          pinInputs[i - 1].focus();
+          pinInputs[i - 1].value = '';
+          pinInputs[i - 1].classList.remove('filled');
+        }
+        // Allow paste of full PIN
+        if (e.key === 'v' && (e.ctrlKey || e.metaKey)) {
+          // handled by paste below
+        }
+      });
+
+      // Handle paste: fill all 4 slots
+      input.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const paste = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 4);
+        pinInputs.forEach((slot, j) => {
+          slot.value = paste[j] || '';
+          slot.classList.toggle('filled', !!slot.value);
+        });
+        const lastFilled = pinInputs.findLastIndex(s => s.value);
+        const nextFocus = lastFilled < pinInputs.length - 1 ? lastFilled + 1 : pinInputs.length - 1;
+        pinInputs[nextFocus].focus();
+        if (paste.length === 4) validatePin();
+      });
+    });
+
+    function getPin() {
+      return pinInputs.map(s => s.value).join('');
+    }
+
+    function clearPin() {
+      pinInputs.forEach(s => { s.value = ''; s.classList.remove('filled'); });
+      pinInputs[0].focus();
+    }
+
+    function shakePin() {
+      gatePin.querySelector('.bg-\\[\\#111625\\]').classList.add('shake');
+      setTimeout(() => {
+        gatePin.querySelector('.bg-\\[\\#111625\\]').classList.remove('shake');
+      }, 400);
+    }
+
+    function validatePin() {
+      const entered = getPin();
+      if (entered.length < 4) return;
+
+      if (entered === ADMIN_PIN) {
+        pinError.classList.add('hidden');
+        // Transition: PIN gate → Auth gate
+        const pinCard = gatePin.querySelector('.bg-\\[\\#111625\\]');
+        pinCard.classList.add('gate-exit');
+        setTimeout(() => {
+          transitionGate(gatePin, gateAuth);
+          // Focus sign-in readiness
+          signInBtn.focus();
+        }, 300);
+      } else {
+        pinError.classList.remove('hidden');
+        shakePin();
+        clearPin();
+      }
+    }
+
+    // Allow pressing Enter to submit
+    pinInputs.forEach(input => {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') validatePin();
+      });
+    });
+
+    // ================================================================
+    //  GATE 2 — FIREBASE AUTH (Google Sign-in)
+    // ================================================================
+
+    backToPinBtn.addEventListener('click', () => {
+      clearPin();
+      transitionGate(gateAuth, gatePin);
+    });
+
+    signInBtn.addEventListener('click', async () => {
+      signInBtn.disabled = true;
+      signInBtn.textContent = 'Signing in\u2026';
+      authError.classList.add('hidden');
+      try {
+        await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+      } catch (err) {
+        authError.textContent = err.message;
+        authError.classList.remove('hidden');
+      } finally {
+        signInBtn.disabled = false;
+        signInBtn.textContent = 'Sign in with Google';
+      }
+    });
+
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        // Bypass gate animation: hide both gates, show panel
+        gatePin.classList.add('hidden');
+        gatePin.classList.remove('gate');
+        gateAuth.classList.add('hidden');
+        adminPanel.classList.remove('hidden');
+        headerRight.innerHTML = `
+          <span class="text-[#8A99AD] text-xs hidden sm:inline">${escapeHtml(user.email)}</span>
+          <button id="logoutBtn"
+                  class="px-3 py-1.5 rounded-lg bg-[#1A2035] text-gray-300 text-xs font-medium hover:brightness-125 transition-all">
+            Sign Out
+          </button>
+        `;
+        $('logoutBtn').addEventListener('click', () => auth.signOut());
+        startRealtimeListener();
+      } else {
+        adminPanel.classList.add('hidden');
+        headerRight.innerHTML = '';
+        if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+        // Show PIN gate (not auth gate) on logout
+        gateAuth.classList.add('hidden');
+        clearPin();
+        gatePin.classList.remove('hidden');
+        gatePin.classList.add('gate', 'flex');
+      }
+    });
+
+    // ================================================================
+    //  LIVE TOGGLE SWITCH
+    // ================================================================
+
+    liveToggle.addEventListener('click', () => {
+      isLive = !isLive;
+      liveToggle.setAttribute('aria-checked', isLive);
+      liveToggleTh.style.transform = isLive ? 'translateX(0)' : 'translateX(20px)';
+      liveToggle.style.opacity = isLive ? '1' : '0.5';
+    });
+
+    // ================================================================
+    //  STREAM SOURCE ROWS
+    // ================================================================
+
+    function addSourceRow(name, url, quality) {
+      sourceCounter++;
+      const div = document.createElement('div');
+      div.className = 'source-entry flex flex-wrap items-center gap-2 bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl p-2.5';
+      div.innerHTML = `
+        <input type="text" placeholder="Server name (e.g. Alpha-01)" value="${escapeHtml(name || '')}"
+               class="source-name flex-1 min-w-[120px] bg-transparent border-none text-gray-100 text-sm placeholder-gray-600 focus:outline-none" />
+        <input type="url" placeholder="https://cdn.example.com/stream.m3u8" value="${escapeHtml(url || '')}"
+               class="source-url flex-[2] min-w-[180px] bg-transparent border-none text-gray-100 text-sm placeholder-gray-600 focus:outline-none" />
+        <select class="source-quality bg-transparent text-gray-100 text-sm border border-[#1F2C4C] rounded-lg px-2 py-1">
+          <option value="4K"  ${quality === '4K'  ? 'selected' : ''}>4K</option>
+          <option value="FHD" ${quality === 'FHD' || !quality ? 'selected' : ''}>FHD</option>
+          <option value="HD"  ${quality === 'HD'  ? 'selected' : ''}>HD</option>
+        </select>
+        <button type="button" class="remove-source text-red-400 hover:text-red-300 text-lg leading-none px-1 transition-colors"
+                aria-label="Remove source">&times;</button>
+      `;
+      div.querySelector('.remove-source').addEventListener('click', () => {
+        div.classList.add('source-entry-removing');
+        setTimeout(() => div.remove(), 200);
+      });
+      sourcesCont.appendChild(div);
+    }
+
+    addSourceBtn.addEventListener('click', () => addSourceRow());
+    addSourceRow(); // one default row
+
+    // ================================================================
+    //  FORM HELPERS
+    // ================================================================
+
+    function getSources() {
+      return Array.from(sourcesCont.querySelectorAll('.source-entry')).map((row) => ({
+        name: row.querySelector('.source-name').value.trim(),
+        url: row.querySelector('.source-url').value.trim(),
+        resolutionQuality: row.querySelector('.source-quality').value,
+      })).filter(s => s.name && s.url);
+    }
+
+    function resetForm() {
+      channelForm.reset();
+      editDocId.value = '';
+      formTitle.textContent = 'Publish Channel';
+      submitBtn.textContent = 'Push Update';
+      sourcesCont.innerHTML = '';
+      addSourceRow();
+      isLive = true;
+      liveToggle.setAttribute('aria-checked', 'true');
+      liveToggleTh.style.transform = 'translateX(0)';
+      liveToggle.style.opacity = '1';
+      nameError.classList.add('hidden');
+      sourcesError.classList.add('hidden');
+    }
+
+    resetBtn.addEventListener('click', resetForm);
+
+    function populateForm(ch) {
+      editDocId.value = ch.id;
+      formTitle.textContent = 'Edit Channel';
+      submitBtn.textContent = 'Update Channel';
+      channelName.value = ch.name || '';
+      channelCat.value = ch.category || 'Live TV';
+      channelLogo.value = ch.logoUrl || '';
+      isLive = !!ch.isLive;
+      liveToggle.setAttribute('aria-checked', isLive);
+      liveToggleTh.style.transform = isLive ? 'translateX(0)' : 'translateX(20px)';
+      liveToggle.style.opacity = isLive ? '1' : '0.5';
+      sourcesCont.innerHTML = '';
+      if (ch.sources && ch.sources.length) {
+        ch.sources.forEach(s => addSourceRow(s.name, s.url, s.resolutionQuality));
+      } else {
+        addSourceRow();
+      }
+      nameError.classList.add('hidden');
+      sourcesError.classList.add('hidden');
+      channelForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ================================================================
+    //  SAVE / UPDATE CHANNEL
+    // ================================================================
+
+    channelForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      let valid = true;
+      const name = channelName.value.trim();
+      if (!name) { nameError.classList.remove('hidden'); valid = false; }
+      else { nameError.classList.add('hidden'); }
+
+      const sources = getSources();
+      if (sources.length === 0) { sourcesError.classList.remove('hidden'); valid = false; }
+      else { sourcesError.classList.add('hidden'); }
+
+      if (!valid) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = editDocId.value ? 'Updating\u2026' : 'Publishing\u2026';
+
+      const data = {
+        name,
+        category: channelCat.value,
+        logoUrl: channelLogo.value.trim() || '',
+        sources,
+        isLive,
+        updatedAt: new Date().toISOString(),
+      };
+
+      try {
+        if (editDocId.value) {
+          await db.collection('zyvi_channels').doc(editDocId.value).update(data);
+          showToast('Channel updated \u2014 pushed to all devices instantly');
+        } else {
+          await db.collection('zyvi_channels').add(data);
+          showToast('Channel published \u2014 live on all devices now');
+        }
+        resetForm();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = editDocId.value ? 'Update Channel' : 'Push Update';
+      }
+    });
+
+    // ================================================================
+    //  CHANNEL OPERATIONS
+    // ================================================================
+
+    async function deleteChannel(id) {
+      const ok = await showConfirm('Delete this channel permanently? All stream sources will be removed.');
+      if (!ok) return;
+      try {
+        await db.collection('zyvi_channels').doc(id).delete();
+        showToast('Channel deleted');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function toggleLive(id, current) {
+      try {
+        await db.collection('zyvi_channels').doc(id).update({
+          isLive: !current,
+          updatedAt: new Date().toISOString(),
+        });
+        showToast(`Channel is now ${current ? 'OFFLINE' : 'LIVE'}`);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function duplicateChannel(ch) {
+      try {
+        await db.collection('zyvi_channels').add({
+          name: ch.name + ' (Copy)',
+          category: ch.category || 'Live TV',
+          logoUrl: ch.logoUrl || '',
+          sources: ch.sources || [],
+          isLive: false,
+          updatedAt: new Date().toISOString(),
+        });
+        showToast('Channel duplicated');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    // ================================================================
+    //  TAB SWITCHING
+    // ================================================================
+
+    const tabChannels      = $('tabChannels');
+    const tabM3U           = $('tabM3U');
+    const tabMonetization  = $('tabMonetization');
+    const tabChBtn         = $('tabChannelsBtn');
+    const tabM3UBtn        = $('tabM3UBtn');
+    const tabMonBtn        = $('tabMonetizationBtn');
+
+    function switchTab(tab) {
+      tabChannels.classList.toggle('hidden', tab !== 'channels');
+      tabM3U.classList.toggle('hidden', tab !== 'm3u');
+      tabMonetization.classList.toggle('hidden', tab !== 'monetization');
+
+      const activeClass = 'tab-btn-active';
+      const inactiveClass = 'text-[#8A99AD] hover:text-gray-200 hover:bg-[#1A2035]';
+      const baseClass = 'tab-btn flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all';
+
+      tabChBtn.className = `${baseClass} ${tab === 'channels' ? activeClass : inactiveClass}`;
+      tabM3UBtn.className = `${baseClass} ${tab === 'm3u' ? activeClass : inactiveClass}`;
+      tabMonBtn.className = `${baseClass} ${tab === 'monetization' ? activeClass : inactiveClass}`;
+
+      if (tab === 'monetization') loadMonetizationForm();
+    }
+
+    tabChBtn.addEventListener('click', () => switchTab('channels'));
+    tabM3UBtn.addEventListener('click', () => switchTab('m3u'));
+    tabMonBtn.addEventListener('click', () => switchTab('monetization'));
+
+    // ================================================================
+    //  M3U PARSER
+    // ================================================================
+
+    const m3uInput         = $('m3uInput');
+    const parseM3UBtn      = $('parseM3UBtn');
+    const parseStats       = $('parseStats');
+    const m3uPreviewSec    = $('m3uPreviewSection');
+    const previewBody      = $('previewBody');
+    const previewCount     = $('previewCount');
+    const m3uImportSec     = $('m3uImportSection');
+    const validateImportBtn = $('validateImportBtn');
+    const m3uResetBtn      = $('m3uResetBtn');
+    const progressWrap     = $('progressWrap');
+    const progressBar      = $('progressBar');
+    const progressLabel    = $('progressLabel');
+    const progressPercent  = $('progressPercent');
+    const importSummary    = $('importSummary');
+    const activeCount      = $('activeCount');
+    const deadCount        = $('deadCount');
+
+    let parsedChannels = [];
+
+    function categorizeChannel(name) {
+      const upper = name.toUpperCase();
+      if (/HBO|CINEMAX|TNT\b|WARNER|MAX|HITS|STARZ|SHOWTIME|AMC|PARAMOUNT/.test(upper)) {
+        return 'Movies & Series';
+      }
+      if (/ESPN|FOX.?SPORT|SPORTS|NBA|NFL|MLB|NHL|UFC|WWE|F1|MOTORSPORT|GOLF|TENNIS/.test(upper)) {
+        return 'Sports';
+      }
+      return 'General Live TV';
+    }
+
+    function parseM3U(text) {
+      const channels = [];
+      const lines = text.split(/\r?\n/);
+
+      // Regex to parse #EXTINF:-1 tvg-name="X" tvg-logo="Y",Name
+      const extinfRegex = /#EXTINF:\s*-?\d+(?:\s+[^,\n]*)?\s*,\s*(.+)/i;
+      const tvgNameRegex = /tvg-name\s*=\s*"([^"]*)"/i;
+      const tvgLogoRegex = /tvg-logo\s*=\s*"([^"]*)"/i;
+      const streamRegex = /^https?:\/\/[^\s"'<>]+\.(?:m3u8|mp4)(?:\?[^\s"'<>]*)?$/i;
+
+      let currentExtinf = null;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        if (/^#EXTINF:/i.test(line)) {
+          const nameMatch = line.match(extinfRegex);
+          const tvgNameMatch = line.match(tvgNameRegex);
+          const tvgLogoMatch = line.match(tvgLogoRegex);
+          const displayName = tvgNameMatch ? tvgNameMatch[1].trim() : (nameMatch ? nameMatch[1].trim() : '');
+          currentExtinf = {
+            name: displayName,
+            logoUrl: tvgLogoMatch ? tvgLogoMatch[1].trim() : '',
+          };
+          continue;
+        }
+
+        if (currentExtinf) {
+          const streamMatch = line.match(streamRegex);
+          if (streamMatch) {
+            channels.push({
+              name: currentExtinf.name || 'Unnamed Channel',
+              logoUrl: currentExtinf.logoUrl || '',
+              url: streamMatch[0],
+              category: categorizeChannel(currentExtinf.name),
+              isLive: false,
+            });
+          }
+          currentExtinf = null;
+          continue;
+        }
+
+        // Also match direct stream URLs not preceded by #EXTINF
+        const directMatch = line.match(streamRegex);
+        if (directMatch) {
+          channels.push({
+            name: 'Channel ' + (channels.length + 1),
+            logoUrl: '',
+            url: directMatch[0],
+            category: 'General Live TV',
+            isLive: false,
+          });
+        }
+      }
+
+      // Deduplicate by URL
+      const seen = new Set();
+      return channels.filter((ch) => {
+        if (seen.has(ch.url)) return false;
+        seen.add(ch.url);
+        return true;
+      });
+    }
+
+    function renderPreview(channels) {
+      previewBody.innerHTML = '';
+      channels.forEach((ch, i) => {
+        const tr = document.createElement('tr');
+        const shortUrl = ch.url.length > 50 ? ch.url.slice(0, 47) + '...' : ch.url;
+        const logoHtml = ch.logoUrl
+          ? `<img src="${escapeHtml(ch.logoUrl)}" alt="" class="w-7 h-7 rounded object-cover" onerror="this.style.display='none'" />`
+          : '<span class="text-[#8A99AD] text-xs">—</span>';
+        tr.innerHTML = `
+          <td class="text-[#8A99AD] text-xs">${i + 1}</td>
+          <td class="text-white text-xs font-medium">${escapeHtml(ch.name)}</td>
+          <td><span class="text-[10px] font-medium px-2 py-0.5 rounded-full ${
+            ch.category === 'Movies & Series' ? 'bg-purple-900/40 text-purple-300' :
+            ch.category === 'Sports' ? 'bg-emerald-900/40 text-emerald-300' :
+            'bg-[#1A2035] text-[#8A99AD]'
+          }">${escapeHtml(ch.category)}</span></td>
+          <td class="text-[#8A99AD] text-xs font-mono max-w-[200px] truncate" title="${escapeHtml(ch.url)}">${escapeHtml(shortUrl)}</td>
+          <td class="text-center">${logoHtml}</td>
+        `;
+        previewBody.appendChild(tr);
+      });
+      previewCount.textContent = `${channels.length} channel${channels.length !== 1 ? 's' : ''} parsed`;
+    }
+
+    parseM3UBtn.addEventListener('click', () => {
+      const text = m3uInput.value.trim();
+      if (!text) {
+        showToast('Paste an M3U playlist first', 'error');
+        return;
+      }
+
+      parsedChannels = parseM3U(text);
+      if (parsedChannels.length === 0) {
+        showToast('No valid channels found. Check the format.', 'error');
+        m3uPreviewSec.classList.add('hidden');
+        m3uImportSec.classList.add('hidden');
+        parseStats.textContent = '0 channels found';
+        return;
+      }
+
+      renderPreview(parsedChannels);
+      m3uPreviewSec.classList.remove('hidden');
+      m3uImportSec.classList.remove('hidden');
+      importSummary.classList.add('hidden');
+      parseStats.textContent = `${parsedChannels.length} channels found`;
+      showToast(`Parsed ${parsedChannels.length} channels from M3U`);
+    });
+
+    // ================================================================
+    //  ASYNC LINK VALIDATOR & FIRESTORE IMPORT
+    // ================================================================
+
+    async function checkLink(url, timeoutMs = 5000) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        const resp = await fetch(url, {
+          method: 'HEAD',
+          signal: controller.signal,
+          mode: 'no-cors',
+        });
+        clearTimeout(timer);
+        // With no-cors, status is 0 but we treat it as reachable
+        if (resp.type === 'opaque') return true;
+        return resp.ok;
+      } catch {
+        return false;
+      }
+    }
+
+    validateImportBtn.addEventListener('click', async () => {
+      if (parsedChannels.length === 0) {
+        showToast('Parse an M3U playlist first', 'error');
+        return;
+      }
+
+      validateImportBtn.disabled = true;
+      validateImportBtn.textContent = 'Validating & Importing\u2026';
+      progressWrap.classList.remove('hidden');
+      importSummary.classList.add('hidden');
+
+      const total = parsedChannels.length;
+      let active = 0;
+      let dead = 0;
+
+      let currentBatch = db.batch();
+      let batchOps = 0;
+      const COMMIT_INTERVAL = 400;
+
+      async function commitBatch() {
+        if (batchOps === 0) return;
+        await currentBatch.commit();
+        currentBatch = db.batch();
+        batchOps = 0;
+      }
+
+      async function addToBatch(data) {
+        const ref = db.collection('zyvi_channels').doc();
+        currentBatch.set(ref, data);
+        batchOps++;
+        if (batchOps >= COMMIT_INTERVAL) {
+          await commitBatch();
+        }
+      }
+
+      for (let i = 0; i < total; i++) {
+        const ch = parsedChannels[i];
+        const percent = Math.round(((i + 1) / total) * 100);
+        progressLabel.textContent = `Checking ${escapeHtml(ch.name)}\u2026`;
+        progressBar.style.width = percent + '%';
+        progressPercent.textContent = percent + '%';
+
+        const isReachable = await checkLink(ch.url);
+
+        if (isReachable) {
+          active++;
+          const docData = {
+            name: ch.name,
+            category: ch.category,
+            logoUrl: ch.logoUrl || '',
+            sources: [{
+              name: ch.name + ' - Source 1',
+              url: ch.url,
+              resolutionQuality: 'FHD',
+            }],
+            isLive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          await addToBatch(docData);
+        } else {
+          dead++;
+        }
+
+        // Update summary live
+        activeCount.textContent = active;
+        deadCount.textContent = dead;
+      }
+
+      // Flush remaining batch writes
+      await commitBatch();
+
+      progressBar.style.width = '100%';
+      progressPercent.textContent = '100%';
+      progressLabel.textContent = 'Complete!';
+      importSummary.classList.remove('hidden');
+
+      showToast(`${active} channels saved, ${dead} dead links removed`);
+
+      validateImportBtn.disabled = false;
+      validateImportBtn.textContent = '\u2705 Validate & Import to Firestore';
+      parsedChannels = [];
+    });
+
+    m3uResetBtn.addEventListener('click', () => {
+      m3uInput.value = '';
+      parsedChannels = [];
+      m3uPreviewSec.classList.add('hidden');
+      m3uImportSec.classList.add('hidden');
+      progressWrap.classList.add('hidden');
+      importSummary.classList.add('hidden');
+      previewBody.innerHTML = '';
+      parseStats.textContent = '';
+      activeCount.textContent = '0';
+      deadCount.textContent = '0';
+      progressBar.style.width = '0%';
+      progressPercent.textContent = '0%';
+      showToast('Cleared M3U importer');
+    });
+
+    // ================================================================
+    //  GLOBAL IPTV LIBRARY SYNC
+    // ================================================================
+
+    const syncGlobalBtn        = $('syncGlobalBtn');
+    const syncGlobalStatus     = $('syncGlobalStatus');
+    const globalProgressWrap   = $('globalProgressWrap');
+    const globalProgressLabel  = $('globalProgressLabel');
+    const globalProgressBar    = $('globalProgressBar');
+    const globalProgressPercent = $('globalProgressPercent');
+    const globalSummary        = $('globalSummary');
+    const globalActiveCount    = $('globalActiveCount');
+    const globalDeadCount      = $('globalDeadCount');
+    const globalDuplicateCount = $('globalDuplicateCount');
+
+    syncGlobalBtn.addEventListener('click', async () => {
+      syncGlobalBtn.disabled = true;
+      syncGlobalBtn.textContent = 'Syncing\u2026';
+      syncGlobalStatus.textContent = '';
+      globalSummary.classList.add('hidden');
+      globalProgressWrap.classList.remove('hidden');
+
+      let total = 0, saved = 0, dead = 0, dupes = 0;
+
+      const updateProgress = (label, pct) => {
+        globalProgressLabel.textContent = label;
+        globalProgressBar.style.width = pct + '%';
+        globalProgressPercent.textContent = pct + '%';
+        globalActiveCount.textContent = saved;
+        globalDeadCount.textContent = dead;
+        globalDuplicateCount.textContent = dupes;
+      };
+
+      try {
+        // 1. Fetch both the streams index and channel metadata
+        updateProgress('Fetching streams index\u2026', 3);
+        const streamsResp = await fetch('https://iptv-org.github.io/api/streams.json', {
+          signal: AbortSignal.timeout(30000),
+        });
+        if (!streamsResp.ok) throw new Error('Streams HTTP ' + streamsResp.status);
+        const streamEntries = await streamsResp.json();
+
+        updateProgress('Fetching channel metadata\u2026', 6);
+        const channelsResp = await fetch('https://iptv-org.github.io/api/channels.json', {
+          signal: AbortSignal.timeout(30000),
+        });
+        if (!channelsResp.ok) throw new Error('Channels HTTP ' + channelsResp.status);
+        const channelEntries = await channelsResp.json();
+
+        // Build a lookup map: channelId -> { name, categories }
+        const channelMap = {};
+        channelEntries.forEach((ch) => {
+          channelMap[ch.id] = {
+            name: ch.name || ch.id,
+            categories: ch.categories || [],
+          };
+        });
+
+        // 2. Merge streams with channel metadata
+        const entries = streamEntries.map((s) => {
+          const meta = channelMap[s.channel] || {};
+          return {
+            name: s.title || meta.name || s.channel || 'Unnamed',
+            url: s.url,
+            logo: '',
+            category: (meta.categories && meta.categories.length > 0)
+              ? meta.categories[0]
+              : '',
+            quality: s.quality || 'FHD',
+          };
+        });
+
+        const MAX_PROCESS = 2000;
+        total = Math.min(entries.length, MAX_PROCESS);
+        syncGlobalStatus.textContent = `${streamEntries.length} streams fetched, processing up to ${total}`;
+
+        // 2. Pre-load existing URLs to avoid duplicates
+        updateProgress('Loading existing channels\u2026', 10);
+        const existingSnap = await db.collection('zyvi_channels').get();
+        const existingUrls = new Set();
+        existingSnap.forEach((doc) => {
+          const sources = doc.data().sources || [];
+          sources.forEach((s) => existingUrls.add(s.url));
+        });
+
+        // 3. Batch write logic
+        let currentBatch = db.batch();
+        let batchOps = 0;
+        const COMMIT_INTERVAL = 400;
+
+        async function commitBatch() {
+          if (batchOps === 0) return;
+          await currentBatch.commit();
+          currentBatch = db.batch();
+          batchOps = 0;
+        }
+
+        async function addToBatch(data) {
+          const ref = db.collection('zyvi_channels').doc();
+          currentBatch.set(ref, data);
+          batchOps++;
+          if (batchOps >= COMMIT_INTERVAL) {
+            await commitBatch();
+          }
+        }
+
+        // 4. Process each entry
+        for (let i = 0; i < total; i++) {
+          const entry = entries[i];
+          const pct = Math.round(8 + ((i + 1) / total) * 87);
+          updateProgress(
+            `[${i + 1}/${total}] Checking ${escapeHtml(entry.name || '')}\u2026`,
+            pct,
+          );
+
+          if (!entry.url) { dead++; continue; }
+
+          // Dedup check
+          if (existingUrls.has(entry.url)) { dupes++; continue; }
+
+          // Channel name fallback
+          const channelName = entry.name || entry.id || 'Channel ' + (i + 1);
+
+          // Category mapping: preserve native, fallback to keyword mapper
+          let category = entry.category || 'General Live TV';
+          if (!entry.category || entry.category === '') {
+            category = categorizeChannel(channelName);
+          }
+
+          // HEAD validation
+          let reachable = false;
+          try {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 5000);
+            const probe = await fetch(entry.url, {
+              method: 'HEAD',
+              signal: controller.signal,
+              mode: 'no-cors',
+            });
+            clearTimeout(timer);
+            reachable = probe.type === 'opaque' || probe.ok;
+          } catch {}
+
+          if (!reachable) { dead++; continue; }
+
+          // Save
+          existingUrls.add(entry.url);
+          const logoUrl = entry.logo || entry.logoUrl || '';
+          const now = new Date().toISOString();
+          await addToBatch({
+            name: channelName,
+            category: category,
+            logoUrl: logoUrl,
+            sources: [{
+              name: channelName + ' - Source 1',
+              url: entry.url,
+              resolutionQuality: 'FHD',
+            }],
+            isLive: true,
+            createdAt: now,
+            updatedAt: now,
+          });
+          saved++;
+        }
+
+        // Flush remaining
+        await commitBatch();
+
+        updateProgress('Complete!', 100);
+        globalSummary.classList.remove('hidden');
+        showToast(`${saved} channels saved, ${dead} dead, ${dupes} duplicates skipped`);
+      } catch (err) {
+        updateProgress('Error: ' + err.message, 0);
+        showToast(err.message, 'error');
+      } finally {
+        syncGlobalBtn.disabled = false;
+        syncGlobalBtn.textContent = '\u{1F310} Sync Global IPTV Library';
+      }
+    });
+
+    // ================================================================
+    //  MONETIZATION CONFIG
+    // ================================================================
+
+    const monAppId          = $('monAppId');
+    const monBannerId       = $('monBannerId');
+    const monInterstitialId = $('monInterstitialId');
+    const monEnabledToggle  = $('monEnabledToggle');
+    const monEnabledThumb   = $('monEnabledThumb');
+    const monSaveBtn        = $('monSaveBtn');
+    const monRefreshBtn     = $('monRefreshBtn');
+    const monForm           = $('monetizationForm');
+    const monStatusDot      = $('monStatusDot');
+    const monStatusText     = $('monStatusText');
+    const monPreview        = $('monPreview');
+
+    let monAdsEnabled = false;
+
+    monEnabledToggle.addEventListener('click', () => {
+      monAdsEnabled = !monAdsEnabled;
+      monEnabledToggle.setAttribute('aria-checked', monAdsEnabled);
+      monEnabledThumb.style.transform = monAdsEnabled ? 'translateX(20px)' : 'translateX(0)';
+      monEnabledToggle.style.background = monAdsEnabled
+        ? 'linear-gradient(135deg, #7F00FF, #E100FF)'
+        : '#1A2035';
+      monEnabledThumb.style.background = monAdsEnabled ? '#fff' : '#9CA3AF';
+    });
+
+    function setMonStatus(ok, msg) {
+      monStatusDot.className = `w-2 h-2 rounded-full ${ok ? 'bg-[#00FFCC]' : 'bg-red-400'}`;
+      monStatusText.textContent = msg;
+    }
+
+    async function loadMonetizationForm() {
+      monSaveBtn.disabled = true;
+      monSaveBtn.textContent = 'Loading\u2026';
+      try {
+        const snap = await db.collection('zyvi_config').doc('monetization').get();
+        if (snap.exists) {
+          const d = snap.data();
+          monAppId.value = d.appId || '';
+          monBannerId.value = d.bannerUnitId || '';
+          monInterstitialId.value = d.interstitialUnitId || '';
+          monAdsEnabled = !!d.adsEnabled;
+          monEnabledToggle.setAttribute('aria-checked', monAdsEnabled);
+          monEnabledThumb.style.transform = monAdsEnabled ? 'translateX(20px)' : 'translateX(0)';
+          monEnabledToggle.style.background = monAdsEnabled
+            ? 'linear-gradient(135deg, #7F00FF, #E100FF)'
+            : '#1A2035';
+          monEnabledThumb.style.background = monAdsEnabled ? '#fff' : '#9CA3AF';
+          setMonStatus(true, 'Live config loaded');
+          updateMonPreview(d);
+        } else {
+          setMonStatus(false, 'Document zyvi_config/monetization does not exist');
+          monPreview.textContent = 'Document does not exist. Fill the form and save to create it.';
+        }
+      } catch (err) {
+        setMonStatus(false, err.message);
+      } finally {
+        monSaveBtn.disabled = false;
+        monSaveBtn.textContent = 'Save Configuration';
+      }
+    }
+
+    function updateMonPreview(d) {
+      monPreview.textContent = JSON.stringify(d, null, 2);
+    }
+
+    monForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      monSaveBtn.disabled = true;
+      monSaveBtn.textContent = 'Saving\u2026';
+      try {
+        const data = {
+          appId: monAppId.value.trim(),
+          bannerUnitId: monBannerId.value.trim(),
+          interstitialUnitId: monInterstitialId.value.trim(),
+          adsEnabled: monAdsEnabled,
+        };
+        await db.collection('zyvi_config').doc('monetization').set(data);
+        updateMonPreview(data);
+        setMonStatus(true, 'Saved \u2014 pushed live to all devices');
+        showToast('Monetization config saved \u2014 mobile apps update instantly');
+      } catch (err) {
+        setMonStatus(false, err.message);
+        showToast(err.message, 'error');
+      } finally {
+        monSaveBtn.disabled = false;
+        monSaveBtn.textContent = 'Save Configuration';
+      }
+    });
+
+    monRefreshBtn.addEventListener('click', loadMonetizationForm);
+
+    // ================================================================
+    //  REAL-TIME FIRESTORE LISTENER
+    // ================================================================
+
+    function startRealtimeListener() {
+      if (unsubscribe) unsubscribe();
+
+      channelsList.innerHTML = `
+        <div class="shimmer h-16 rounded-xl"></div>
+        <div class="shimmer h-16 rounded-xl"></div>
+        <div class="shimmer h-16 rounded-xl"></div>
+      `;
+
+      unsubscribe = db.collection('zyvi_channels')
+        .orderBy('updatedAt', 'desc')
+        .onSnapshot((snap) => {
+          channelsList.innerHTML = '';
+          const channels = [];
+          snap.forEach((doc) => channels.push({ id: doc.id, ...doc.data() }));
+
+          channelCount.textContent = `${channels.length} channel${channels.length !== 1 ? 's' : ''}`;
+
+          if (channels.length === 0) {
+            channelsList.innerHTML = `
+              <div class="text-center py-10 text-[#8A99AD] text-sm">
+                No channels yet. Use the form above to publish one.
+              </div>
+            `;
+            return;
+          }
+
+          channels.forEach((ch) => {
+            const sCount = (ch.sources || []).length;
+            const sLabel = sCount > 0 ? `${sCount} source${sCount > 1 ? 's' : ''}` : 'No sources';
+
+            const card = document.createElement('div');
+            card.className =
+              'flex items-center gap-3 p-3.5 bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl hover:border-[#7F00FF]/50 transition-bg';
+
+            // Logo
+            const logo = document.createElement('div');
+            logo.className =
+              'w-10 h-10 rounded-lg bg-[#1A2035] flex-shrink-0 flex items-center justify-center overflow-hidden';
+            if (ch.logoUrl) {
+              logo.innerHTML = `<img src="${escapeHtml(ch.logoUrl)}" alt="" class="w-full h-full object-cover"
+                onerror="this.parentElement.innerHTML='<span class=\\'text-[#7F00FF] text-lg\\'>TV</span>'" />`;
+            } else {
+              logo.innerHTML = '<span class="text-[#7F00FF] text-lg">TV</span>';
+            }
+
+            // Info
+            const info = document.createElement('div');
+            info.className = 'flex-1 min-w-0';
+            info.innerHTML = `
+              <div class="text-white text-sm font-semibold truncate">${escapeHtml(ch.name)}</div>
+              <div class="text-[#8A99AD] text-xs mt-0.5">${escapeHtml(ch.category || 'Uncategorized')} &middot; ${sLabel}</div>
+            `;
+
+            // LIVE badge
+            const badge = ch.isLive
+              ? '<span class="text-[10px] font-bold text-[#00FFCC] bg-[#00FFCC]/10 px-2 py-0.5 rounded shrink-0">LIVE</span>'
+              : '';
+
+            // Actions
+            const actions = document.createElement('div');
+            actions.className = 'flex gap-1 shrink-0';
+            actions.innerHTML = `
+              <button class="action-edit px-2.5 py-1.5 rounded-lg bg-[#1A2035] text-gray-300 text-xs hover:brightness-125 transition-all"
+                      title="Edit">&#9998;</button>
+              <button class="action-live px-2.5 py-1.5 rounded-lg bg-[#1A2035] text-gray-300 text-xs hover:brightness-125 transition-all"
+                      title="Toggle isLive">${ch.isLive ? 'Offline' : 'Go Live'}</button>
+              <button class="action-dup px-2.5 py-1.5 rounded-lg bg-[#1A2035] text-gray-300 text-xs hover:brightness-125 transition-all"
+                      title="Duplicate">&#9442;</button>
+              <button class="action-del px-2.5 py-1.5 rounded-lg bg-red-900/40 text-red-400 text-xs hover:brightness-125 transition-all"
+                      title="Delete">&#128465;</button>
+            `;
+
+            const badgeNode = badge
+              ? document.createRange().createContextualFragment(badge)
+              : null;
+            card.append(logo, info, badgeNode, actions);
+
+            // Bind actions
+            const data = ch;
+            actions.querySelector('.action-edit').addEventListener('click', () => populateForm(data));
+            actions.querySelector('.action-live').addEventListener('click', () => toggleLive(data.id, data.isLive));
+            actions.querySelector('.action-dup').addEventListener('click', () => duplicateChannel(data));
+            actions.querySelector('.action-del').addEventListener('click', () => deleteChannel(data.id));
+
+            channelsList.appendChild(card);
+          });
+        }, (err) => {
+          channelsList.innerHTML = `
+            <div class="text-center py-10 text-red-400 text-sm">
+              Failed to load channels. Check Firestore security rules.
+              <br /><span class="text-[#8A99AD] text-xs">${escapeHtml(err.message)}</span>
+            </div>
+          `;
+        });
+    }
+  </script>
+</body>
+</html>

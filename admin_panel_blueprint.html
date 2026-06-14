@@ -1,0 +1,60 @@
+<!-- Location: admin/admin_panel_blueprint.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Zyvi TV - Central Stream Automation Admin Desk</title>
+    <style>
+        body { background-color: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .card { background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 25px; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; display: flex; flex-direction: column; }
+        label { margin-bottom: 8px; font-weight: 600; color: #58a6ff; }
+        input, select { background-color: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px; color: white; }
+        button { background: linear-gradient(135deg, #7F00FF 0%, #E100FF 100%); border: none; border-radius: 6px; color: white; padding: 12px 24px; font-weight: bold; cursor: pointer; transition: filter 0.2s; }
+        button:hover { filter: brightness(1.2); }
+        .stream-entry { display: flex; gap: 10px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Zyvi TV Management Control Console</h2>
+        <div class="card">
+            <h3>Publish / Update Stream Channel</h3>
+            <form id="channelForm">
+                <div class="form-group">
+                    <label>Channel Name</label>
+                    <input type="text" placeholder="e.g., T-Sports Live, Fox HD" required>
+                </div>
+                <div class="form-group">
+                    <label>Category Group</label>
+                    <select>
+                        <option value="Cricket">Cricket</option>
+                        <option value="Football">Football</option>
+                        <option value="Live TV">General Live TV</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Stream Senders & Routing Targets</label>
+                    <div id="streamSourcesContainer">
+                        <div class="stream-entry">
+                            <input type="text" placeholder="Server Route Title (e.g. Server Alpha)" style="flex: 2;">
+                            <input type="url" placeholder="Direct Stream Link URI (.m3u8)" style="flex: 4;">
+                            <select style="flex: 1;">
+                                <option>4K</option>
+                                <option selected>FHD</option>
+                                <option>HD</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group" style="flex-direction: row; gap: 10px; align-items: center; margin: 15px 0;">
+                    <input type="checkbox" id="isLiveCheck" checked>
+                    <label for="isLiveCheck" style="margin-bottom: 0;">Broadcast Immediately as Active Live Event</label>
+                </div>
+                <button type="submit">Push Real-Time Update to Mobile Devices</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
