@@ -18,6 +18,16 @@ subprojects {
 subprojects {
     project.evaluationDependsOn(":app")
 }
+subprojects {
+    afterEvaluate {
+        @Suppress("UNCHECKED_CAST")
+        (extensions.findByName("android") as? com.android.build.gradle.LibraryExtension)?.let {
+            if (it.namespace == null) {
+                it.namespace = "com.example.zyvi_tv"
+            }
+        }
+    }
+}
 
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
