@@ -29,6 +29,14 @@ flutter:
   uses-material-design: true
   config:
     enable-swift-package-manager: false
+  assets:
+    - assets/icon/app_icon.png
+    - assets/icon/app_icon_foreground.png
+    - assets/images/main_logo.png
+    - assets/images/splash_screen.png
+    - assets/images/login_artwork.png
+    - assets/images/tv_banner.png
+    - assets/images/web_hero_banner.png
 
 flutter_launcher_icons:
   android: true
@@ -36,4 +44,5 @@ flutter_launcher_icons:
   image_path: "assets/icon/app_icon.png"
   adaptive_icon_background: "#080C16"
   adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  remove_alpha_ios: true
   min_sdk_android: 21

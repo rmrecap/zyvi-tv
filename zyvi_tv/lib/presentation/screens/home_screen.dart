@@ -56,13 +56,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: SafeArea(
         child: Column(
           children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               child: Row(
                 children: [
-                  Icon(Icons.live_tv, color: AppTheme.accentPurple, size: 28),
-                  SizedBox(width: 10),
-                  Text(
+                  Image.asset('assets/images/main_logo.png', height: 32, fit: BoxFit.contain),
+                  const SizedBox(width: 10),
+                  const Text(
                     'Zyvi TV',
                     style: TextStyle(
                       color: AppTheme.textPrimary,
@@ -71,8 +71,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       letterSpacing: 0.5,
                     ),
                   ),
-                  Spacer(),
-                  Icon(Icons.settings, color: AppTheme.textSecondary),
+                  const Spacer(),
+                  const Icon(Icons.settings, color: AppTheme.textSecondary),
                 ],
               ),
             ),

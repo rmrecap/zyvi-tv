@@ -29,17 +29,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
-      child: const Center(
+      child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.live_tv,
-              size: 80,
-              color: AppTheme.accentPurple,
+            Image.asset(
+              'assets/images/splash_screen.png',
+              width: 120,
+              height: 120,
+              fit: BoxFit.contain,
             ),
-            SizedBox(height: 20),
-            Text(
+            const SizedBox(height: 20),
+            const Text(
               'Zyvi TV',
               style: TextStyle(
                 fontSize: 38,
@@ -48,8 +49,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 letterSpacing: 2,
               ),
             ),
-            SizedBox(height: 8),
-            Text(
+            const SizedBox(height: 8),
+            const Text(
               'Live Streaming',
               style: TextStyle(
                 fontSize: 14,
