@@ -7,9 +7,6 @@ plugins {
 android {
     namespace = "com.example.zyvi_tv"
     compileSdk = 36
-    checkAarMetadata {
-        enabled = false
-    }
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
