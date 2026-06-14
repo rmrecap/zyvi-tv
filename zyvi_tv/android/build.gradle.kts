@@ -1,3 +1,16 @@
+import com.android.build.gradle.AppExtension
+import com.android.build.gradle.LibraryExtension
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle:9.0.1")
+    }
+}
+
 allprojects {
     repositories {
         google()
@@ -15,10 +28,17 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+
 subprojects {
-    afterEvaluate {
-        val android = extensions.findByName("android") ?: return@afterEvaluate
-        (android as groovy.lang.GroovyObject).invokeMethod("compileSdk", 36)
+    plugins.withId("com.android.application") {
+        configure<AppExtension> {
+            compileSdk = 36
+        }
+    }
+    plugins.withId("com.android.library") {
+        configure<LibraryExtension> {
+            compileSdk = 36
+        }
     }
 }
 
