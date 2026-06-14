@@ -1,13 +1,3 @@
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath("com.android.tools.build:gradle:9.0.1")
-    }
-}
-
 allprojects {
     repositories {
         google()
@@ -26,14 +16,10 @@ subprojects {
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 subprojects {
-    plugins.withId("com.android.application") {
-        configure<com.android.build.gradle.AppExtension> {
-            compileSdk = 36
-        }
-    }
-    plugins.withId("com.android.library") {
-        configure<com.android.build.gradle.LibraryExtension> {
-            compileSdk = 36
+    afterEvaluate {
+        val ext = extensions.findByName("android")
+        if (ext is com.android.build.gradle.BaseExtension) {
+            ext.compileSdkVersion(36)
         }
     }
 }
