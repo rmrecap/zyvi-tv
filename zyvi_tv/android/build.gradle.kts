@@ -16,9 +16,6 @@ subprojects {
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 subprojects {
-    project.evaluationDependsOn(":app")
-}
-subprojects {
     afterEvaluate {
         @Suppress("UNCHECKED_CAST")
         (extensions.findByName("android") as? com.android.build.gradle.LibraryExtension)?.let {
@@ -27,6 +24,7 @@ subprojects {
             }
         }
     }
+    project.evaluationDependsOn(":app")
 }
 
 tasks.register<Delete>("clean") {
