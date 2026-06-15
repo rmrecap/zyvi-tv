@@ -18,7 +18,7 @@ subprojects {
 
 subprojects {
     afterEvaluate {
-        tasks.findAll { it.name.contains("checkAarMetadata", ignoreCase = true) }.forEach {
+        tasks.matching { it.name.contains("checkAarMetadata", ignoreCase = true) }.forEach {
             it.enabled = false
         }
     }
