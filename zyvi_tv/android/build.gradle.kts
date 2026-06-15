@@ -16,11 +16,18 @@ subprojects {
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 
+allprojects {
+    tasks.configureEach {
+        if (name.contains("checkAarMetadata", ignoreCase = true)) {
+            enabled = false
+        }
+    }
+}
+
 subprojects {
     afterEvaluate {
-        tasks.matching { it.name.contains("checkAarMetadata", ignoreCase = true) }.forEach {
-            it.enabled = false
-        }
+        val android = extensions.findByName("android") ?: return@afterEvaluate
+        (android as groovy.lang.GroovyObject).setProperty("compileSdk", 36)
     }
 }
 
