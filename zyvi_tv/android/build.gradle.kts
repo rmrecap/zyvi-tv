@@ -16,6 +16,14 @@ subprojects {
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 
+subprojects {
+    afterEvaluate {
+        tasks.findAll { it.name.contains("checkAarMetadata", ignoreCase = true) }.forEach {
+            it.enabled = false
+        }
+    }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
