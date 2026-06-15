@@ -15,15 +15,17 @@ class AdManagerService extends ChangeNotifier {
   StreamSubscription<DocumentSnapshot>? _subscription;
 
   Future<void> syncAdConfiguration() async {
-    final doc = FirebaseFirestore.instance
-        .collection('zyvi_config')
-        .doc('monetization');
+    try {
+      final doc = FirebaseFirestore.instance
+          .collection('zyvi_config')
+          .doc('monetization');
 
-    final snapshot = await doc.get();
-    _applyDocument(snapshot);
+      final snapshot = await doc.get();
+      _applyDocument(snapshot);
 
-    _subscription?.cancel();
-    _subscription = doc.snapshots().listen(_applyDocument);
+      _subscription?.cancel();
+      _subscription = doc.snapshots().listen(_applyDocument);
+    } catch (_) {}
   }
 
   void _applyDocument(DocumentSnapshot snapshot) {
@@ -37,18 +39,11 @@ class AdManagerService extends ChangeNotifier {
     adsEnabled = data['adsEnabled'] as bool? ?? false;
 
     if (!initialized && appId.isNotEmpty) {
-      _initMobileAds();
+      initialized = true;
+      notifyListeners();
     }
 
     notifyListeners();
-  }
-
-  Future<void> _initMobileAds() async {
-    try {
-      await MobileAds.instance.initialize();
-      initialized = true;
-      notifyListeners();
-    } catch (_) {}
   }
 
   bool get canShowBanner =>

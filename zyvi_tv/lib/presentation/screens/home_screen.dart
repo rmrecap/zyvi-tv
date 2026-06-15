@@ -7,7 +7,6 @@ import '../../data/providers/ad_provider.dart';
 import '../../data/providers/channel_provider.dart';
 import '../widgets/ad_banner_widget.dart';
 import '../widgets/channel_card.dart';
-import '../widgets/channel_details_bottom_sheet.dart';
 import '../widgets/filter_bar.dart';
 import '../widgets/shimmer_loader.dart';
 
@@ -25,6 +24,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final initialLabel = AppConstants.filterCategories[0];
+      if (initialLabel != 'LIVE NOW') {
+        ref.read(paginatedChannelsProvider.notifier).loadCategory(initialLabel);
+      }
+    });
   }
 
   @override
@@ -46,10 +51,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final filterLabel = AppConstants.filterCategories[selectedIndex];
     final isLiveNow = filterLabel == 'LIVE NOW';
 
-    // Lazily switch category on filter change
-    if (!isLiveNow) {
-      ref.read(paginatedChannelsProvider.notifier).loadCategory(filterLabel);
-    }
+    ref.listen<int>(selectedFilterIndexProvider, (_, nextIndex) {
+      final label = AppConstants.filterCategories[nextIndex];
+      if (label != 'LIVE NOW') {
+        ref.read(paginatedChannelsProvider.notifier).loadCategory(label);
+      }
+    });
 
     return Container(
       decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
@@ -95,12 +102,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return channelsAsync.when(
       data: (channels) => _buildChannelList(channels, false),
       loading: () => const ShimmerLoader(),
-      error: (err, _) => const Center(
+      error: (err, _) => Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Failed to load channels',
-            style: TextStyle(color: AppTheme.textSecondary),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Failed to load channels',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                err.toString(),
+                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
       ),
@@ -122,12 +140,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         return _buildChannelList(state.channels, state.isLoadingMore);
       },
       loading: () => const ShimmerLoader(),
-      error: (err, _) => const Center(
+      error: (err, _) => Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Failed to load channels',
-            style: TextStyle(color: AppTheme.textSecondary),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Failed to load channels',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                err.toString(),
+                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
       ),
@@ -166,15 +195,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _onChannelTap(BuildContext context, WidgetRef ref, ChannelModel channel) {
+    if (channel.sources.isEmpty) return;
+    final source = channel.sources.first;
     final adManager = ref.read(adManagerProvider);
-    if (adManager.canShowInterstitial) {
-      adManager.loadInterstitial();
-    }
-
-    ChannelDetailsBottomSheet.show(
-      context,
-      channel,
-      onPlayStream: (source) => _onPlayStream(context, ref, source),
+    adManager.showInterstitialIfAvailable(
+      onDismissed: () {
+        Navigator.pushNamed(context, '/player', arguments: source);
+      },
     );
   }
 

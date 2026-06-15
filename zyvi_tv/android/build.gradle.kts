@@ -29,6 +29,10 @@ subprojects {
         val android = extensions.findByName("android") ?: return@afterEvaluate
         (android as groovy.lang.GroovyObject).setProperty("compileSdk", 36)
     }
+
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        compilerOptions.freeCompilerArgs.add("-Xskip-metadata-version-check")
+    }
 }
 
 tasks.register<Delete>("clean") {

@@ -12,17 +12,18 @@ class AdBannerWidget extends ConsumerStatefulWidget {
 
 class _AdBannerWidgetState extends ConsumerState<AdBannerWidget> {
   BannerAd? _banner;
+  bool _loaded = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _loadBanner();
+    if (!_loaded) {
+      _loaded = true;
+      _loadBanner();
+    }
   }
 
   void _loadBanner() {
-    _banner?.dispose();
-    _banner = null;
-
     final adManager = ref.read(adManagerProvider);
     if (!adManager.canShowBanner) return;
 

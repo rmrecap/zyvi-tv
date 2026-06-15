@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>APIKey</key>
+	<string>AIzaSyBi5CpO6YMco94JdkHq2tTWLQyxwo7CIkU</string>
+	<key>GoogleAppID</key>
+	<string>1:836039862469:ios:5a4b3c2d1e0f9a8b</string>
+	<key>ProjectID</key>
+	<string>zyvi-tv</string>
+	<key>StorageBucket</key>
+	<string>zyvi-tv.firebasestorage.app</string>
+	<key>ISSignInEnabled</key>
+	<true/>
+	<key>GCM_SENDER_ID</key>
+	<string>836039862469</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.zyvi-tv</string>
+</dict>
+</plist>

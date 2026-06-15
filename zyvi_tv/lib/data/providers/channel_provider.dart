@@ -6,18 +6,21 @@ const int _pageSize = 20;
 
 final liveChannelsProvider =
     StreamProvider.autoDispose<List<ChannelModel>>((ref) {
-  final firestore = FirebaseFirestore.instance;
-
-  return firestore
-      .collection('zyvi_channels')
-      .where('isLive', isEqualTo: true)
-      .orderBy('updatedAt', descending: true)
-      .snapshots()
-      .map((snapshot) {
-    return snapshot.docs.map((doc) {
-      return ChannelModel.fromMap(doc.data(), doc.id);
-    }).toList();
-  });
+  try {
+    final firestore = FirebaseFirestore.instance;
+    return firestore
+        .collection('zyvi_channels')
+        .where('isLive', isEqualTo: true)
+        .orderBy('updatedAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return ChannelModel.fromMap(doc.data(), doc.id);
+      }).toList();
+    }).handleError((_) => <ChannelModel>[]);
+  } catch (_) {
+    return const Stream.empty();
+  }
 });
 
 class PaginatedChannelsNotifier

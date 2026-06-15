@@ -1,0 +1,23 @@
+{
+  "project_info": {
+    "project_number": "836039862469",
+    "project_id": "zyvi-tv",
+    "storage_bucket": "zyvi-tv.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:836039862469:android:5a4b3c2d1e0f9a8b",
+        "android_client_info": {
+          "package_name": "com.example.zyvi_tv"
+        }
+      },
+      "api_key": [
+        {
+          "current_key": "AIzaSyBi5CpO6YMco94JdkHq2tTWLQyxwo7CIkU"
+        }
+      ]
+    }
+  ],
+  "configuration_version": "1"
+}
