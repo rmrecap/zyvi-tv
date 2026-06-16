@@ -1,0 +1,72 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────
+// Zyvi TV — Firestore Security Rules
+// ─────────────────────────────────────────────────────────
+// Admin console (Firebase Hosting) authenticates via
+// Google Sign-In; mobile app uses anonymous + email auth.
+// All reads/writes require authentication.
+// ─────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper: request comes from the admin Hosting site ──
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+
+    // ── Helper: any authenticated request ──
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  zyvi_channels — channel library
+    // ════════════════════════════════════════════════════════
+    match /zyvi_channels/{channelId} {
+      // Mobile app: authenticated users can read all channels
+      // Admin: authenticated Google users can write
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+      allow list: if isAuthenticated();
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  app_settings — branding, ad units, last_updated
+    // ════════════════════════════════════════════════════════
+    match /app_settings/{doc} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  zyvi_config — monetization, seeds
+    // ════════════════════════════════════════════════════════
+    match /zyvi_config/{doc} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  secure_stream_url — encrypted stream URLs (CloudFn only)
+    // ════════════════════════════════════════════════════════
+    match /secure_stream_url/{doc} {
+      allow read, write: if false;   // only accessible via getSecureStream Cloud Function
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  Demo / user-generated data
+    // ════════════════════════════════════════════════════════
+    match /user_progress/{userId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == userId;
+    }
+
+    // ── Deny everything else ──
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -62,7 +62,20 @@ class TrendingRow extends ConsumerWidget {
         );
       },
       loading: () => const SizedBox(height: 120),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, __) => SizedBox(
+        height: 120,
+        child: Center(
+          child: OutlinedButton.icon(
+            onPressed: () => ref.invalidate(allChannelsProvider),
+            icon: const Icon(Icons.refresh, size: 16),
+            label: const Text('Retry'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.accentPurple,
+              side: const BorderSide(color: AppTheme.accentPurple),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

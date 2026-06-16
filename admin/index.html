@@ -190,6 +190,19 @@
             <button id="filterClearBtn" class="px-3 py-2 rounded-lg bg-[#1A2035] text-gray-300 text-xs hover:brightness-125 transition-all">Clear</button>
           </div>
 
+          <!-- Bulk Action Toolbar -->
+          <div id="bulkToolbar" class="hidden flex items-center gap-3 mb-4 p-3 bg-[#0A0E1A] rounded-xl border border-[#7F00FF]/40">
+            <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+              <input type="checkbox" id="selectAllCheck" class="accent-[#7F00FF] w-4 h-4" />
+              Select All
+            </label>
+            <span id="selectedCount" class="text-[#8A99AD] text-xs">0 selected</span>
+            <span class="text-[#1F2C4C]">|</span>
+            <select id="bulkCategorySelect" class="bg-[#111625] border border-[#1F2C4C] rounded-lg px-3 py-2 text-gray-100 text-sm max-w-[180px]"></select>
+            <button id="bulkApplyBtn" class="px-4 py-2 rounded-lg bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white text-xs font-semibold hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed">Apply</button>
+            <button id="bulkClearBtn" class="px-3 py-2 rounded-lg bg-[#1A2035] text-gray-300 text-xs hover:brightness-125 transition-all">Clear</button>
+          </div>
+
           <div id="channelsList" class="space-y-2"></div>
 
           <!-- Pagination Toolbar -->
@@ -557,13 +570,22 @@
         const sorted = Array.from(cats).sort();
         const filterSel = $('categoryFilter');
         const formSel = $('channelCategory');
+        const bulkCatSel = $('bulkCategorySelect');
 
         // Preserve current selection
         const currentFilter = filterSel.value;
 
-        filterSel.innerHTML = '<option value="">All Categories</option>';
+        const buildOpts = (sel) => {
+          sel.innerHTML = '<option value="">All Categories</option>';
+          sorted.forEach(c => {
+            sel.innerHTML += `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`;
+          });
+        };
+        buildOpts(filterSel);
+        buildOpts(bulkCatSel);
+        bulkCatSel.innerHTML = '<option value="">Select category\u2026</option>' + sorted.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+
         sorted.forEach(c => {
-          filterSel.innerHTML += `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`;
           if (!Array.from(formSel.options).some(o => o.value === c)) {
             formSel.innerHTML += `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`;
           }
@@ -664,8 +686,39 @@
       }
     }
 
+    // ── Logo placeholder resolver ──
+    function resolveLogoUrl(ch) {
+      if (ch.logoUrl) return ch.logoUrl;
+      const cat = (ch.category || '').toLowerCase();
+      const icons = {
+        'sports': '🏅', 'news': '📰', 'movies & series': '🎬', 'music': '🎵',
+        'kids': '🧒', 'documentary': '🌍', 'entertainment': '🎭', 'religious': '🕊️',
+        'business': '📈', 'science & tech': '💻',
+      };
+      for (const [key, icon] of Object.entries(icons)) {
+        if (cat.includes(key)) return `data:image/svg+xml,${encodeURIComponent(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="#1A2035"/><text x="20" y="26" font-size="20" text-anchor="middle" fill="#7F00FF">${icon}</text></svg>`
+        )}`;
+      }
+      return `data:image/svg+xml,${encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="#1A2035"/><text x="20" y="26" font-size="18" text-anchor="middle" fill="#7F00FF">📺</text></svg>`
+      )}`;
+    }
+
+    // ── Bulk selection state ──
+    let selectedIds = new Set();
+    let currentRenderedChannels = [];
+
+    function updateBulkToolbar() {
+      const count = selectedIds.size;
+      $('selectedCount').textContent = count + ' selected';
+      $('bulkToolbar').classList.toggle('hidden', count === 0);
+      $('bulkApplyBtn').disabled = count === 0;
+    }
+
     function renderChannels(channels) {
       channelsList.innerHTML = '';
+      currentRenderedChannels = channels;
 
       if (channels.length === 0) {
         channelsList.innerHTML = `<div class="text-center py-10 text-[#8A99AD] text-sm">No channels yet. Use the form above to publish one.</div>`;
@@ -675,17 +728,24 @@
       channels.forEach(ch => {
         const sCount = (ch.sources || []).length;
         const sLabel = sCount > 0 ? `${sCount} source${sCount > 1 ? 's' : ''}` : 'No sources';
+        const isChecked = selectedIds.has(ch.id);
 
         const card = document.createElement('div');
-        card.className = 'flex items-center gap-3 p-3.5 bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl hover:border-[#7F00FF]/50 transition-bg';
+        card.className = `flex items-center gap-3 p-3.5 bg-[#0A0E1A] border rounded-xl transition-bg ${isChecked ? 'border-[#7F00FF]' : 'border-[#1F2C4C] hover:border-[#7F00FF]/50'}`;
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'accent-[#7F00FF] w-4 h-4 shrink-0 cursor-pointer';
+        cb.checked = isChecked;
+        cb.addEventListener('change', () => {
+          if (cb.checked) selectedIds.add(ch.id); else selectedIds.delete(ch.id);
+          card.style.borderColor = cb.checked ? '#7F00FF' : '#1F2C4C';
+          updateBulkToolbar();
+        });
 
         const logo = document.createElement('div');
         logo.className = 'w-10 h-10 rounded-lg bg-[#1A2035] flex-shrink-0 flex items-center justify-center overflow-hidden';
-        if (ch.logoUrl) {
-          logo.innerHTML = `<img src="${escapeHtml(ch.logoUrl)}" alt="" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<span class=\\'text-[#7F00FF] text-lg\\'>TV</span>'" />`;
-        } else {
-          logo.innerHTML = '<span class="text-[#7F00FF] text-lg">TV</span>';
-        }
+        logo.innerHTML = `<img src="${escapeHtml(resolveLogoUrl(ch))}" alt="" class="w-full h-full object-cover" onerror="this.innerHTML='<span class=\\'text-[#7F00FF] text-lg\\'>TV</span>'" />`;
 
         const info = document.createElement('div');
         info.className = 'flex-1 min-w-0';
@@ -705,7 +765,7 @@
         `;
 
         const badgeNode = badge ? document.createRange().createContextualFragment(badge) : null;
-        card.append(logo, info, badgeNode, actions);
+        card.append(cb, logo, info, badgeNode, actions);
 
         const data = ch;
         actions.querySelector('.action-edit').addEventListener('click', () => populateForm(data));
@@ -759,6 +819,59 @@
       categoryFilter.value = '';
       countryFilter.value = '';
       loadChannelsPage(1);
+    });
+
+    // ── Bulk action handlers ──
+    const selectAllCheck = $('selectAllCheck');
+    const bulkCategorySelect = $('bulkCategorySelect');
+    const bulkApplyBtn = $('bulkApplyBtn');
+    const bulkClearBtn = $('bulkClearBtn');
+
+    selectAllCheck.addEventListener('change', () => {
+      const checked = selectAllCheck.checked;
+      currentRenderedChannels.forEach(ch => {
+        if (checked) selectedIds.add(ch.id); else selectedIds.delete(ch.id);
+      });
+      // Re-render to reflect checkbox states
+      renderChannels(currentRenderedChannels);
+      updateBulkToolbar();
+    });
+
+    bulkClearBtn.addEventListener('click', () => {
+      selectedIds.clear();
+      selectAllCheck.checked = false;
+      renderChannels(currentRenderedChannels);
+      updateBulkToolbar();
+    });
+
+    bulkApplyBtn.addEventListener('click', async () => {
+      const targetCategory = bulkCategorySelect.value;
+      if (!targetCategory) { showToast('Select a target category first', 'error'); return; }
+      if (selectedIds.size === 0) { showToast('No channels selected', 'error'); return; }
+      const ok = await showConfirm(`Change category of ${selectedIds.size} channel${selectedIds.size > 1 ? 's' : ''} to "${targetCategory}"?`);
+      if (!ok) return;
+      bulkApplyBtn.disabled = true;
+      bulkApplyBtn.textContent = 'Applying\u2026';
+      try {
+        const ids = Array.from(selectedIds);
+        let batch = db.batch();
+        let ops = 0;
+        for (const id of ids) {
+          const ref = db.collection('zyvi_channels').doc(id);
+          batch.update(ref, { category: targetCategory, updatedAt: new Date().toISOString() });
+          ops++;
+          if (ops >= 400) { await batch.commit(); batch = db.batch(); ops = 0; }
+        }
+        if (ops > 0) await batch.commit();
+        showToast(`${ids.length} channels moved to "${targetCategory}"`);
+        selectedIds.clear();
+        selectAllCheck.checked = false;
+        renderChannels(currentRenderedChannels);
+        updateBulkToolbar();
+        loadChannelsPage(currentPage);
+        loadCategories();
+      } catch (err) { showToast(err.message, 'error'); }
+      finally { bulkApplyBtn.disabled = false; bulkApplyBtn.textContent = 'Apply'; }
     });
 
     // ================================================================
@@ -942,10 +1055,27 @@
 
     let parsedChannels = [];
 
-    function categorizeChannel(name) {
-      const upper = name.toUpperCase();
-      if (/HBO|CINEMAX|TNT\b|WARNER|MAX|HITS|STARZ|SHOWTIME|AMC|PARAMOUNT/.test(upper)) return 'Movies & Series';
-      if (/ESPN|FOX.?SPORT|SPORTS|NBA|NFL|MLB|NHL|UFC|WWE|F1|MOTORSPORT|GOLF|TENNIS/.test(upper)) return 'Sports';
+    // ── Category keyword dictionary (name-based fallback if group-title missing) ──
+    const CATEGORY_KEYWORDS = [
+      { keywords: ['sport', 'espn', 'nba', 'nfl', 'mlb', 'ufc', 'wwe', 'f1', 'golf', 'tennis', 'cricket', 'football', 'soccer', 'world cup', 'olympic', 'motogp', 'boxing', 'hockey', 'nhl', 'racing', 'motorsport', 'wrestling', 'badminton', 'volleyball', 'rugby'], label: 'Sports' },
+      { keywords: ['news', 'cnn', 'bbc', 'al jazeera', 'fox news', 'msnbc', 'nbc news', 'abc news', 'cbs news', 'sky news', 'euro news', 'ndtv', 'times now', 'republic'], label: 'News' },
+      { keywords: ['movie', 'series', 'hbo', 'cinemax', 'paramount', 'starz', 'showtime', 'amc', 'film', 'cinema', 'tnt', 'warner', 'max', 'marvel', 'dc', 'disney+', 'netflix'], label: 'Movies & Series' },
+      { keywords: ['music', 'mtv', 'vh1', 'beats', 'radio', 'concert', 'live concert'], label: 'Music' },
+      { keywords: ['kids', 'cartoon', 'disney', 'nickelodeon', 'cartoon network', 'boomerang', 'pogo', 'baby'], label: 'Kids' },
+      { keywords: ['documentary', 'discovery', 'nat geo', 'history', 'national geographic', 'learning', 'education', 'travel'], label: 'Documentary' },
+      { keywords: ['entertainment', 'comedy', 'bravo', 'tlc', 'e!', 'lifestyle', 'reality'], label: 'Entertainment' },
+      { keywords: ['religion', 'faith', 'church', 'bible', 'islam', 'quran', 'spiritual', 'prayer'], label: 'Religious' },
+      { keywords: ['business', 'bloomberg', 'cnbc', 'market', 'finance', 'economy'], label: 'Business' },
+      { keywords: ['tech', 'technology', 'science', 'gadget', 'digital', 'coding', 'programming'], label: 'Science & Tech' },
+    ];
+
+    function categorizeByName(name) {
+      const lower = name.toLowerCase();
+      for (const group of CATEGORY_KEYWORDS) {
+        for (const kw of group.keywords) {
+          if (lower.includes(kw)) return group.label;
+        }
+      }
       return 'General Live TV';
     }
 
@@ -953,9 +1083,13 @@
       const channels = [];
       const lines = text.split(/\r?\n/);
       const extinfRegex = /#EXTINF:\s*-?\d+(?:\s+[^,\n]*)?\s*,\s*(.+)/i;
+      const groupTitleRegex = /group-title\s*=\s*"([^"]*)"/i;
       const tvgNameRegex = /tvg-name\s*=\s*"([^"]*)"/i;
       const tvgLogoRegex = /tvg-logo\s*=\s*"([^"]*)"/i;
-      const streamRegex = /^https?:\/\/[^\s"'<>]+\.(?:m3u8|mp4)(?:\?[^\s"'<>]*)?$/i;
+      const logoRegex = /logo\s*=\s*"([^"]*)"/i;
+      const streamRegex = /^https?:\/\/[^\s"'<>]+(?:\.[^\s"'<>]*)?(?:m3u8|mp4|flv|ts|m3u)(?:\?[^\s"'<>]*)?$/i;
+      const genericStreamRegex = /^https?:\/\/[^\s"'<>]+\.(?:m3u8|mp4|flv|ts|m3u)(?:\?[^\s"'<>]*)?$/i;
+      const fallbackStreamRegex = /^https?:\/\/[^\s"'<>]+$/i;
       let currentExtinf = null;
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
@@ -963,21 +1097,48 @@
         if (/^#EXTINF:/i.test(line)) {
           const nameMatch = line.match(extinfRegex);
           const tvgNameMatch = line.match(tvgNameRegex);
+          const groupTitleMatch = line.match(groupTitleRegex);
           const tvgLogoMatch = line.match(tvgLogoRegex);
-          const displayName = tvgNameMatch ? tvgNameMatch[1].trim() : (nameMatch ? nameMatch[1].trim() : '');
-          currentExtinf = { name: displayName, logoUrl: tvgLogoMatch ? tvgLogoMatch[1].trim() : '' };
+          const logoMatch = line.match(logoRegex);
+          const displayName = tvgNameMatch
+            ? tvgNameMatch[1].trim()
+            : (nameMatch ? nameMatch[1].trim() : '');
+          const logoUrl = (tvgLogoMatch || logoMatch)
+            ? ((tvgLogoMatch || logoMatch)[1].trim())
+            : '';
+
+          // group-title -> category mapping
+          const category = groupTitleMatch
+            ? groupTitleMatch[1].trim()
+            : categorizeByName(displayName);
+
+          currentExtinf = { name: displayName, logoUrl, category };
           continue;
         }
         if (currentExtinf) {
-          const streamMatch = line.match(streamRegex);
-          if (streamMatch) {
-            channels.push({ name: currentExtinf.name || 'Unnamed', logoUrl: currentExtinf.logoUrl || '', url: streamMatch[0], category: categorizeChannel(currentExtinf.name), isLive: false });
+          const matched = line.match(genericStreamRegex) || line.match(fallbackStreamRegex);
+          if (matched && line.startsWith('http')) {
+            channels.push({
+              name: currentExtinf.name || 'Unnamed',
+              logoUrl: currentExtinf.logoUrl || '',
+              url: matched[0],
+              category: currentExtinf.category || 'General Live TV',
+              isLive: false,
+            });
           }
           currentExtinf = null;
           continue;
         }
-        const directMatch = line.match(streamRegex);
-        if (directMatch) { channels.push({ name: 'Channel ' + (channels.length + 1), logoUrl: '', url: directMatch[0], category: 'General Live TV', isLive: false }); }
+        const directMatch = line.match(genericStreamRegex);
+        if (directMatch && line.startsWith('http')) {
+          channels.push({
+            name: 'Channel ' + (channels.length + 1),
+            logoUrl: '',
+            url: directMatch[0],
+            category: categorizeByName(''),
+            isLive: false,
+          });
+        }
       }
       const seen = new Set();
       return channels.filter(ch => { if (seen.has(ch.url)) return false; seen.add(ch.url); return true; });
@@ -988,7 +1149,7 @@
       channels.forEach((ch, i) => {
         const tr = document.createElement('tr');
         const shortUrl = ch.url.length > 50 ? ch.url.slice(0, 47) + '...' : ch.url;
-        const logoHtml = ch.logoUrl ? `<img src="${escapeHtml(ch.logoUrl)}" alt="" class="w-7 h-7 rounded object-cover" onerror="this.style.display='none'" />` : '<span class="text-[#8A99AD] text-xs">—</span>';
+        const logoHtml = `<img src="${escapeHtml(resolveLogoUrl(ch))}" alt="" class="w-7 h-7 rounded object-cover" onerror="this.style.display='none'" />`;
         tr.innerHTML =
           `<td class="text-[#8A99AD] text-xs">${i + 1}</td>` +
           `<td class="text-white text-xs font-medium">${escapeHtml(ch.name)}</td>` +

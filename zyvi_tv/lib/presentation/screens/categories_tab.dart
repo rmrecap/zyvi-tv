@@ -66,12 +66,31 @@ class CategoriesTab extends ConsumerWidget {
               );
             },
             loading: () => const ShimmerLoader(),
-            error: (err, _) => const Center(
+            error: (err, _) => Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'Failed to load categories',
-                  style: TextStyle(color: AppTheme.textSecondary),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.cloud_off,
+                        color: AppTheme.textSecondary, size: 48),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Failed to load categories',
+                      style: TextStyle(color: AppTheme.textSecondary),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: () =>
+                          ref.invalidate(allChannelsProvider),
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('Retry'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.accentPurple,
+                        side: const BorderSide(color: AppTheme.accentPurple),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

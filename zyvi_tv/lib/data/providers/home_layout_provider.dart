@@ -15,7 +15,7 @@ final homeLayoutProvider = FutureProvider<List<String>>((ref) async {
     await remoteConfig.setDefaults({
       'home_section_order': jsonEncode(_defaultSectionOrder),
     });
-    await remoteConfig.fetchAndActivate();
+    await remoteConfig.fetchAndActivate().timeout(const Duration(seconds: 2));
     final raw = remoteConfig.getString('home_section_order');
     if (raw.isEmpty) return _defaultSectionOrder;
     final parsed = jsonDecode(raw);

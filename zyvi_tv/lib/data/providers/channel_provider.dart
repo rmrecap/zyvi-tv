@@ -37,28 +37,101 @@ final allChannelsProvider =
 class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
   @override
   Future<List<ChannelModel>> build() async {
-    ref.keepAlive();
     final hive = ref.read(hiveCacheServiceProvider);
 
+    try {
+      final cached = hive.getCachedChannels();
+      if (cached.isNotEmpty) {
+        final prioritized = _prioritizeChannels(cached);
+        _backgroundSync(hive);
+        return prioritized;
+      }
+    } catch (_) {
+      // Hive read failed — fall through to network
+    }
+
+    try {
+      final channels = await _fetchAndCache(hive)
+          .timeout(const Duration(seconds: 5));
+      return _prioritizeChannels(channels);
+    } catch (_) {
+      try {
+        final fallback = hive.getCachedChannels();
+        if (fallback.isNotEmpty) return _prioritizeChannels(fallback);
+      } catch (_) {}
+      return [];
+    }
+  }
+
+  /// Maximum number of priority slots at the top of the list.
+  static const int _prioritySlots = 6;
+
+  /// Returns true when [channel] qualifies for a top priority slot.
+  static bool _isPriorityChannel(ChannelModel c) {
+    final cat = c.category.toLowerCase();
+    final name = c.name.toLowerCase();
+    final text = '$cat $name';
+    return c.isLive ||
+        text.contains('world cup') ||
+        text.contains('worldcup') ||
+        text.contains('sports') ||
+        text.contains('sport') ||
+        text.contains('fifa') ||
+        text.contains('tournament') ||
+        text.contains('championship') ||
+        text.contains('champion') ||
+        text.contains('match') ||
+        text.contains('cricket') ||
+        text.contains('football') ||
+        text.contains('soccer') ||
+        text.contains('basketball') ||
+        text.contains('tennis') ||
+        text.contains('olympic') ||
+        text.contains('ufc') ||
+        text.contains('wwe') ||
+        text.contains('boxing') ||
+        text.contains('motogp') ||
+        text.contains('formula 1') ||
+        text.contains('f1 ') ||
+        text.contains('nba') ||
+        text.contains('nfl') ||
+        text.contains('mlb') ||
+        text.contains('nhl');
+  }
+
+  /// Pins priority channels at indexes 0–5, keeps the rest in their original
+  /// order below. The result always has the same length as [channels].
+  static List<ChannelModel> _prioritizeChannels(List<ChannelModel> channels) {
+    if (channels.length <= _prioritySlots) return channels;
+    final priority = <ChannelModel>[];
+    final rest = <ChannelModel>[];
+    for (final c in channels) {
+      if (priority.length < _prioritySlots && _isPriorityChannel(c)) {
+        priority.add(c);
+      } else {
+        rest.add(c);
+      }
+    }
+    return [...priority, ...rest];
+  }
+
+  Future<void> _backgroundSync(HiveCacheService hive) async {
     try {
       final serverConfig = await FirebaseFirestore.instance
           .collection('app_settings')
           .doc('config')
-          .get();
+          .get(const GetOptions(source: Source.server))
+          .timeout(const Duration(seconds: 3));
       final serverTimestamp =
           (serverConfig.data()?['last_updated'] as num?)?.toInt() ?? 0;
       final localTimestamp = hive.lastUpdatedTimestamp;
 
-      if (hive.channelsBox.isNotEmpty && serverTimestamp == localTimestamp) {
-        return hive.getCachedChannels();
-      }
+      if (serverTimestamp == localTimestamp) return;
 
-      return _fetchAndCache(hive);
+      final channels = await _fetchAndCache(hive);
+      state = AsyncData(_prioritizeChannels(channels));
     } catch (_) {
-      if (hive.channelsBox.isNotEmpty) {
-        return hive.getCachedChannels();
-      }
-      rethrow;
+      // Background sync failed — cached data remains
     }
   }
 
@@ -67,7 +140,8 @@ class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
     final snapshot = await firestore
         .collection('zyvi_channels')
         .orderBy('updatedAt', descending: true)
-        .get();
+        .get()
+        .timeout(const Duration(seconds: 5));
 
     final channels = snapshot.docs
         .map((doc) => ChannelModel.fromMap(doc.data(), doc.id))
@@ -78,7 +152,8 @@ class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
     final serverConfig = await firestore
         .collection('app_settings')
         .doc('config')
-        .get();
+        .get()
+        .timeout(const Duration(seconds: 3));
     final serverTimestamp =
         (serverConfig.data()?['last_updated'] as num?)?.toInt() ?? 0;
     hive.lastUpdatedTimestamp = serverTimestamp;
@@ -92,14 +167,14 @@ class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
       try {
         final hive = ref.read(hiveCacheServiceProvider);
         final channels = await _fetchAndCache(hive);
-        state = AsyncData(channels);
+        state = AsyncData(_prioritizeChannels(channels));
       } catch (_) {}
     } else {
       state = const AsyncLoading();
       try {
         final hive = ref.read(hiveCacheServiceProvider);
         final channels = await _fetchAndCache(hive);
-        state = AsyncData(channels);
+        state = AsyncData(_prioritizeChannels(channels));
       } catch (err, st) {
         state = AsyncError(err, st);
       }

@@ -33,24 +33,23 @@ void main() async {
     hiveCacheService = HiveCacheService();
     await hiveCacheService.init();
     final cached = hiveCacheService.getCachedChannelCount();
-    debugPrint('Hive cache initialized: $cached channels cached');
+    debugPrint('Hive cache ready: $cached channels');
   } catch (e) {
-    debugPrint('Hive initialization failed: $e');
-  }
-  try {
-    await MobileAds.instance.initialize();
-
-    final deviceId = await _getTestDeviceId();
-    debugPrint('AdMob test device ID: $deviceId');
-    await MobileAds.instance.updateRequestConfiguration(
-      RequestConfiguration(
-        testDeviceIds: [deviceId],
-      ),
-    );
-  } catch (e) {
-    debugPrint('AdMob initialization failed: $e');
+    debugPrint('Hive init error: $e');
   }
   runApp(const ProviderScope(child: ZyviTVApp()));
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    try {
+      await MobileAds.instance.initialize();
+      final deviceId = await _getTestDeviceId();
+      await MobileAds.instance.updateRequestConfiguration(
+        RequestConfiguration(testDeviceIds: [deviceId]),
+      );
+      debugPrint('AdMob initialized: $deviceId');
+    } catch (e) {
+      debugPrint('AdMob deferred init error: $e');
+    }
+  });
 }
 
 Future<String> _getTestDeviceId() async {
