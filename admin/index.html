@@ -230,9 +230,13 @@
         </div>
         <div class="bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
           <h3 class="text-white font-semibold text-base mb-3 flex items-center gap-2"><span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>Auto-Categorization Active</h3>
-          <p class="text-[#8A99AD] text-xs opacity-70">
-            Categorization is fully automatic. When <code class="text-[#7F00FF]">group-title="..."</code> is present in the M3U it is used directly. When absent, <code class="text-[#7F00FF]">categorizeByName()</code> applies a built-in 10-category keyword dictionary (<strong class="text-gray-300">Sports, News, Movies &amp; Series, Music, Kids, Documentary, Entertainment, Religious, Business, Science &amp; Tech</strong>) with 25+ sports-specific tournament keywords (World Cup, FIFA, NBA, NFL, Olympic, UFC, etc.) to guarantee World Cup / Sports priority sorting on the mobile client. No manual regex input is required — click <strong class="text-gray-300">Parse M3U</strong> above to run the full pipeline automatically.
+          <p class="text-[#8A99AD] text-xs mb-4 opacity-70">
+            Categorization is fully automatic. When <code class="text-[#7F00FF]">group-title="..."</code> is present in the M3U it is used directly. When absent, <code class="text-[#7F00FF]">categorizeByName()</code> applies a built-in 10-category keyword dictionary (<strong class="text-gray-300">Sports, News, Movies &amp; Series, Music, Kids, Documentary, Entertainment, Religious, Business, Science &amp; Tech</strong>) with 25+ sports-specific tournament keywords (World Cup, FIFA, NBA, NFL, Olympic, UFC, etc.) to guarantee World Cup / Sports priority sorting on the mobile client.
           </p>
+          <div class="flex items-center gap-3">
+            <button type="button" id="autoCategorizeAllBtn" class="px-5 py-2 rounded-xl bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white font-semibold text-xs hover:brightness-110 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed">&#x1F504; Auto-Categorize All Channels</button>
+            <span id="autoCatStatus" class="text-[#8A99AD] text-xs"></span>
+          </div>
         </div>
 
         <div id="m3uPreviewSection" class="hidden bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
@@ -1170,6 +1174,42 @@
       importSummary.classList.add('hidden');
       parseStats.textContent = `${parsedChannels.length} channels found`;
       showToast(`Parsed ${parsedChannels.length} channels`);
+    });
+
+    const autoCategorizeAllBtn = $('autoCategorizeAllBtn');
+    const autoCatStatus = $('autoCatStatus');
+
+    autoCategorizeAllBtn.addEventListener('click', async () => {
+      const ok = await showConfirm('Auto-categorize ALL existing channels based on their names? This will overwrite current category values.');
+      if (!ok) return;
+      autoCategorizeAllBtn.disabled = true;
+      autoCategorizeAllBtn.textContent = 'Categorizing\u2026';
+      autoCatStatus.textContent = 'Fetching channels\u2026';
+      try {
+        const snap = await db.collection('zyvi_channels').get();
+        const total = snap.docs.length;
+        if (total === 0) { showToast('No channels found', 'error'); autoCatStatus.textContent = 'No channels'; return; }
+        let batch = db.batch();
+        let ops = 0;
+        let updated = 0;
+        for (const doc of snap.docs) {
+          const data = doc.data();
+          const name = data.name || '';
+          const newCategory = categorizeByName(name);
+          if (newCategory !== data.category) {
+            batch.update(doc.ref, { category: newCategory, updatedAt: new Date().toISOString() });
+            updated++;
+            ops++;
+            if (ops >= 400) { await batch.commit(); batch = db.batch(); ops = 0; }
+          }
+        }
+        if (ops > 0) await batch.commit();
+        autoCatStatus.textContent = `${updated} of ${total} channels recategorized`;
+        showToast(`${updated} channels categorized`);
+        loadChannelsPage(1);
+        loadCategories();
+      } catch (err) { showToast(err.message, 'error'); autoCatStatus.textContent = 'Error'; }
+      finally { autoCategorizeAllBtn.disabled = false; autoCategorizeAllBtn.textContent = '\u{1F504} Auto-Categorize All Channels'; }
     });
 
     async function checkLink(url, timeoutMs = 5000) {
