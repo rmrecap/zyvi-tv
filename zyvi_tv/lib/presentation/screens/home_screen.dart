@@ -596,11 +596,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _onChannelTap(BuildContext context, WidgetRef ref, ChannelModel channel) {
     if (channel.sources.isEmpty) return;
     final source = channel.sources.first;
-    final adManager = ref.read(adManagerProvider);
-    adManager.showInterstitialIfAvailable(
-      onDismissed: () {
-        Navigator.pushNamed(context, '/player', arguments: source);
-      },
-    );
+    Navigator.pushNamed(context, '/player', arguments: source);
+    Future.microtask(() {
+      try {
+        ref.read(adManagerProvider).showInterstitialIfAvailable();
+      } catch (_) {}
+    });
   }
 }
