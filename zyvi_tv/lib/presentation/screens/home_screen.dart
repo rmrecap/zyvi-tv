@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/constants/app_constants.dart';
@@ -252,7 +253,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildChannelList(List<ChannelModel> channels, bool isLoadingMore) {
     return ListView.builder(
       shrinkWrap: true,
-      cacheExtent: 300,
+      scrollCacheExtent: const ScrollCacheExtent.pixels(300),
       physics: const NeverScrollableScrollPhysics(),
       itemCount: channels.length + (isLoadingMore ? 1 : 0),
       padding: const EdgeInsets.only(top: 4, bottom: 24),

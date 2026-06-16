@@ -60,10 +60,7 @@ final liveChannelsProvider =
         .orderBy('updatedAt', descending: true)
         .snapshots()
         .asyncMap((snapshot) async {
-      final docs = snapshot.docs
-          .map((d) => d as QueryDocumentSnapshot<Map<String, dynamic>>)
-          .toList();
-      return _parseDocsOffMain(docs);
+      return _parseDocsOffMain(snapshot.docs);
     }).handleError((_) => <ChannelModel>[]);
   } catch (_) {
     return const Stream.empty();
@@ -160,11 +157,7 @@ class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
         .get()
         .timeout(const Duration(seconds: 5));
 
-    final docs = snapshot.docs
-        .map((d) => d as QueryDocumentSnapshot<Map<String, dynamic>>)
-        .toList();
-
-    final channels = await _parseDocsOffMain(docs);
+    final channels = await _parseDocsOffMain(snapshot.docs);
 
     await hive.cacheChannels(channels);
 
@@ -260,10 +253,7 @@ class PaginatedChannelsNotifier
           .limit(_pageSize);
 
       final snapshot = await query.get();
-      final docs = snapshot.docs
-          .map((d) => d as QueryDocumentSnapshot<Map<String, dynamic>>)
-          .toList();
-      final channels = await _parseDocsOffMain(docs);
+      final channels = await _parseDocsOffMain(snapshot.docs);
 
       _lastDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
       _hasMore = snapshot.docs.length >= _pageSize;
@@ -296,10 +286,8 @@ class PaginatedChannelsNotifier
       }
 
       final snapshot = await query.get();
-      final docs = snapshot.docs
-          .map((d) => d as QueryDocumentSnapshot<Map<String, dynamic>>)
-          .toList();
-      final newChannels = await _parseDocsOffMain(docs);
+      final newChannels = await _parseDocsOffMain(
+          snapshot.docs.cast<QueryDocumentSnapshot<Map<String, dynamic>>>());
 
       _lastDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
       _hasMore = snapshot.docs.length >= _pageSize;

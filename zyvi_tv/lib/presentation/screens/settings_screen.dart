@@ -143,14 +143,14 @@ class SettingsScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: AppTheme.glassCardDecoration(radius: 14),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Icon(Icons.copyright, color: AppTheme.accentPurple, size: 18),
-              const SizedBox(width: 8),
-              const Text(
+              SizedBox(width: 8),
+              Text(
                 'Copyright Disclaimer',
                 style: TextStyle(
                   color: AppTheme.textPrimary,
@@ -160,8 +160,8 @@ class SettingsScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          const Text(
+          SizedBox(height: 10),
+          Text(
             'Zyvi TV does not host, store, or distribute any copyrighted content. '
             'This application aggregates publicly available HLS streaming links. '
             'All content is sourced from third-party public platforms. '
@@ -186,11 +186,11 @@ class SettingsScreen extends StatelessWidget {
         children: [
           const Icon(Icons.person, color: AppTheme.accentPurple, size: 18),
           const SizedBox(width: 12),
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Demo Account',
                   style: TextStyle(
                     color: AppTheme.textPrimary,
@@ -198,8 +198,8 @@ class SettingsScreen extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 2),
-                const Text(
+                SizedBox(height: 2),
+                Text(
                   'demo@zyvi.tv / demo1234',
                   style: TextStyle(
                     color: AppTheme.textSecondary,
