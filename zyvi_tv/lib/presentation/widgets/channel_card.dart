@@ -28,30 +28,7 @@ class ChannelCard extends StatelessWidget {
               children: [
                 AspectRatio(
                   aspectRatio: 16 / 9,
-                  child: CachedNetworkImage(
-                    imageUrl: channel.logoUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(
-                      color: AppTheme.surfaceLight,
-                      child: const Center(
-                        child: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppTheme.accentPurple,
-                          ),
-                        ),
-                      ),
-                    ),
-                    errorWidget: (_, __, ___) => Container(
-                      color: AppTheme.surfaceLight,
-                      child: const Center(
-                        child: Icon(Icons.tv,
-                            color: AppTheme.textSecondary, size: 32),
-                      ),
-                    ),
-                  ),
+                  child: _buildLogo(),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
@@ -121,6 +98,88 @@ class ChannelCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLogo() {
+    if (channel.logoUrl.isEmpty) {
+      return Container(
+        color: AppTheme.surfaceLight,
+        child: Center(
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppTheme.surface.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.tv, color: AppTheme.textSecondary, size: 26),
+          ),
+        ),
+      );
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        CachedNetworkImage(
+          imageUrl: channel.logoUrl,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => Container(
+            color: AppTheme.surfaceLight,
+            child: const Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppTheme.accentPurple,
+                ),
+              ),
+            ),
+          ),
+          errorWidget: (_, __, ___) => Container(
+            color: AppTheme.surfaceLight,
+            child: Center(
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppTheme.surface.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.tv, color: AppTheme.textSecondary, size: 26),
+              ),
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.transparent,
+                AppTheme.surfaceLight.withValues(alpha: 0.5),
+              ],
+            ),
+          ),
+        ),
+        Positioned(
+          left: 12,
+          bottom: 10,
+          child: SizedBox(
+            width: 40,
+            height: 28,
+            child: CachedNetworkImage(
+              imageUrl: channel.logoUrl,
+              fit: BoxFit.contain,
+              placeholder: (_, __) => const SizedBox(),
+              errorWidget: (_, __, ___) => const SizedBox(),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/providers/ad_provider.dart';
+import '../../data/providers/channel_provider.dart';
+import '../../data/providers/app_settings_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -19,7 +21,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   Future<void> _init() async {
     ref.read(adManagerProvider);
-    await Future.delayed(const Duration(seconds: 2));
+
+    await Future.delayed(const Duration(seconds: 1));
+
+    final settingsService = ref.read(appSettingsProvider);
+    settingsService.onTimestampChanged = () {
+      ref.read(allChannelsProvider.notifier).fullSync();
+    };
+
+    ref.read(allChannelsProvider.notifier).fullSync();
+
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/home');
     }

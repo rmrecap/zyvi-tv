@@ -1,10 +1,28 @@
+import 'package:hive/hive.dart';
+
+part 'channel_model.g.dart';
+
+@HiveType(typeId: 0)
 class ChannelModel {
+  @HiveField(0)
   final String id;
+
+  @HiveField(1)
   final String name;
+
+  @HiveField(2)
   final String category;
+
+  @HiveField(3)
   final String logoUrl;
+
+  @HiveField(4)
   final List<StreamSource> sources;
+
+  @HiveField(5)
   final bool isLive;
+
+  @HiveField(6)
   final DateTime updatedAt;
 
   ChannelModel({
@@ -44,11 +62,21 @@ class ChannelModel {
       ),
     );
   }
+
+  factory ChannelModel.fromJson(Map<String, dynamic> json) {
+    return ChannelModel.fromMap(json, json['id'] as String? ?? '');
+  }
 }
 
+@HiveType(typeId: 1)
 class StreamSource {
+  @HiveField(0)
   final String name;
+
+  @HiveField(1)
   final String url;
+
+  @HiveField(2)
   final String resolutionQuality;
 
   StreamSource({

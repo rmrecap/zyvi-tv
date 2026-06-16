@@ -13,6 +13,7 @@ class AdManagerService extends ChangeNotifier {
   InterstitialAd? _interstitial;
 
   StreamSubscription<DocumentSnapshot>? _subscription;
+  StreamSubscription<DocumentSnapshot>? _appSettingsSub;
 
   Future<void> syncAdConfiguration() async {
     try {
@@ -21,28 +22,69 @@ class AdManagerService extends ChangeNotifier {
           .doc('monetization');
 
       final snapshot = await doc.get();
-      _applyDocument(snapshot);
+      _applyMonetizationDoc(snapshot);
 
       _subscription?.cancel();
-      _subscription = doc.snapshots().listen(_applyDocument);
+      _subscription = doc.snapshots().listen(_applyMonetizationDoc);
+    } catch (_) {}
+
+    try {
+      final appDoc = FirebaseFirestore.instance
+          .collection('app_settings')
+          .doc('config');
+
+      final appSnapshot = await appDoc.get();
+      _applyAppSettingsDoc(appSnapshot);
+
+      _appSettingsSub?.cancel();
+      _appSettingsSub = appDoc.snapshots().listen(_applyAppSettingsDoc);
     } catch (_) {}
   }
 
-  void _applyDocument(DocumentSnapshot snapshot) {
+  void _applyMonetizationDoc(DocumentSnapshot snapshot) {
     if (!snapshot.exists) return;
     final data = snapshot.data() as Map<String, dynamic>?;
     if (data == null) return;
 
-    appId = data['appId'] as String? ?? '';
-    bannerUnitId = data['bannerUnitId'] as String? ?? '';
-    interstitialUnitId = data['interstitialUnitId'] as String? ?? '';
-    adsEnabled = data['adsEnabled'] as bool? ?? false;
+    appId = data['appId'] as String? ?? appId;
+    bannerUnitId = data['bannerUnitId'] as String? ?? bannerUnitId;
+    interstitialUnitId =
+        data['interstitialUnitId'] as String? ?? interstitialUnitId;
+    adsEnabled = data['adsEnabled'] as bool? ?? adsEnabled;
 
-    if (!initialized && appId.isNotEmpty) {
-      initialized = true;
-      notifyListeners();
+    _checkInitialized();
+  }
+
+  void _applyAppSettingsDoc(DocumentSnapshot snapshot) {
+    if (!snapshot.exists) return;
+    final data = snapshot.data() as Map<String, dynamic>?;
+    if (data == null) return;
+
+    final settingsAppId = data['adMobAppId'] as String?;
+    final settingsBannerId = data['adMobBannerUnitId'] as String?;
+    final settingsInterstitialId = data['adMobInterstitialUnitId'] as String?;
+    final settingsAdsEnabled = data['adsEnabled'] as bool?;
+
+    if (settingsAppId != null && settingsAppId.isNotEmpty) {
+      appId = settingsAppId;
+    }
+    if (settingsBannerId != null && settingsBannerId.isNotEmpty) {
+      bannerUnitId = settingsBannerId;
+    }
+    if (settingsInterstitialId != null && settingsInterstitialId.isNotEmpty) {
+      interstitialUnitId = settingsInterstitialId;
+    }
+    if (settingsAdsEnabled != null) {
+      adsEnabled = settingsAdsEnabled;
     }
 
+    _checkInitialized();
+  }
+
+  void _checkInitialized() {
+    if (!initialized && appId.isNotEmpty) {
+      initialized = true;
+    }
     notifyListeners();
   }
 
@@ -100,6 +142,7 @@ class AdManagerService extends ChangeNotifier {
   @override
   void dispose() {
     _subscription?.cancel();
+    _appSettingsSub?.cancel();
     _interstitial?.dispose();
     super.dispose();
   }

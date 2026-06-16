@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../main.dart';
+import '../../services/hive_cache_service.dart';
 import '../models/channel_model.dart';
 
 const int _pageSize = 20;
@@ -22,6 +24,109 @@ final liveChannelsProvider =
     return const Stream.empty();
   }
 });
+
+final hiveCacheServiceProvider = Provider<HiveCacheService>((ref) {
+  return hiveCacheService;
+});
+
+final allChannelsProvider =
+    AsyncNotifierProvider<ChannelsNotifier, List<ChannelModel>>(
+  ChannelsNotifier.new,
+);
+
+class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
+  @override
+  Future<List<ChannelModel>> build() async {
+    ref.keepAlive();
+    final hive = ref.read(hiveCacheServiceProvider);
+
+    try {
+      final serverConfig = await FirebaseFirestore.instance
+          .collection('app_settings')
+          .doc('config')
+          .get();
+      final serverTimestamp =
+          (serverConfig.data()?['last_updated'] as num?)?.toInt() ?? 0;
+      final localTimestamp = hive.lastUpdatedTimestamp;
+
+      if (hive.channelsBox.isNotEmpty && serverTimestamp == localTimestamp) {
+        return hive.getCachedChannels();
+      }
+
+      return _fetchAndCache(hive);
+    } catch (_) {
+      if (hive.channelsBox.isNotEmpty) {
+        return hive.getCachedChannels();
+      }
+      rethrow;
+    }
+  }
+
+  Future<List<ChannelModel>> _fetchAndCache(HiveCacheService hive) async {
+    final firestore = FirebaseFirestore.instance;
+    final snapshot = await firestore
+        .collection('zyvi_channels')
+        .orderBy('updatedAt', descending: true)
+        .get();
+
+    final channels = snapshot.docs
+        .map((doc) => ChannelModel.fromMap(doc.data(), doc.id))
+        .toList();
+
+    await hive.cacheChannels(channels);
+
+    final serverConfig = await firestore
+        .collection('app_settings')
+        .doc('config')
+        .get();
+    final serverTimestamp =
+        (serverConfig.data()?['last_updated'] as num?)?.toInt() ?? 0;
+    hive.lastUpdatedTimestamp = serverTimestamp;
+
+    return channels;
+  }
+
+  Future<void> fullSync() async {
+    final current = state;
+    if (current is AsyncData && (current.valueOrNull?.isNotEmpty == true)) {
+      try {
+        final hive = ref.read(hiveCacheServiceProvider);
+        final channels = await _fetchAndCache(hive);
+        state = AsyncData(channels);
+      } catch (_) {}
+    } else {
+      state = const AsyncLoading();
+      try {
+        final hive = ref.read(hiveCacheServiceProvider);
+        final channels = await _fetchAndCache(hive);
+        state = AsyncData(channels);
+      } catch (err, st) {
+        state = AsyncError(err, st);
+      }
+    }
+  }
+}
+
+final categoriesProvider = FutureProvider<List<CategoryInfo>>((ref) async {
+  final channels = await ref.watch(allChannelsProvider.future);
+  final map = <String, int>{};
+  for (final c in channels) {
+    if (c.category.isNotEmpty) {
+      map[c.category] = (map[c.category] ?? 0) + 1;
+    }
+  }
+  final entries = map.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  return entries
+      .map((e) => CategoryInfo(name: e.key, channelCount: e.value))
+      .toList();
+});
+
+class CategoryInfo {
+  final String name;
+  final int channelCount;
+  const CategoryInfo({required this.name, required this.channelCount});
+}
 
 class PaginatedChannelsNotifier
     extends AsyncNotifier<PaginatedChannelState> {
