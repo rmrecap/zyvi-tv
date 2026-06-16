@@ -147,6 +147,13 @@
                 <label for="channelLogo" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">Logo URL</label>
                 <input type="url" id="channelLogo" placeholder="https://example.com/logo.png" class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm placeholder-gray-600 transition-bg focus:border-[#7F00FF]" />
               </div>
+              <div id="channelIdField" class="hidden">
+                <label class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">Channel ID</label>
+                <div class="flex gap-2 items-center">
+                  <input type="text" id="channelIdDisplay" readonly class="flex-1 bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-400 text-sm font-mono cursor-text" />
+                  <button type="button" onclick="copyChannelId()" class="text-[#7F00FF] hover:text-[#A855FF] text-xs font-semibold uppercase tracking-wider transition-colors whitespace-nowrap">Copy</button>
+                </div>
+              </div>
             </div>
             <div class="mb-4">
               <label for="channelCountry" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">Country</label>
@@ -854,7 +861,7 @@
         const info = document.createElement('div');
         info.className = 'flex-1 min-w-0';
         const countryTag = ch.country ? `<span class="text-[#7F00FF]/70">${escapeHtml(ch.country)}</span> &middot; ` : '';
-        info.innerHTML = `<div class="text-white text-sm font-semibold truncate">${escapeHtml(ch.name)}</div><div class="text-[#8A99AD] text-xs mt-0.5">${countryTag}${escapeHtml(ch.category || 'Uncategorized')} &middot; ${sLabel}</div>`;
+        info.innerHTML = `<div class="text-white text-sm font-semibold truncate">${escapeHtml(ch.name)}</div><div class="text-[#8A99AD] text-xs mt-0.5"><span class="font-mono text-[#6B7280]">${escapeHtml(ch.id)}</span> &middot; ${countryTag}${escapeHtml(ch.category || 'Uncategorized')} &middot; ${sLabel}</div>`;
 
         const badge = ch.isLive
           ? '<span class="text-[10px] font-bold text-[#00FFCC] bg-[#00FFCC]/10 px-2 py-0.5 rounded shrink-0">LIVE</span>'
@@ -1043,6 +1050,8 @@
       sourcesCont.innerHTML = '';
       addSourceRow();
       isLive = true;
+      $('channelIdField').classList.add('hidden');
+      $('channelIdDisplay').value = '';
       liveToggle.setAttribute('aria-checked', 'true');
       liveToggleTh.style.transform = 'translateX(0)';
       liveToggle.style.opacity = '1';
@@ -1052,6 +1061,12 @@
 
     resetBtn.addEventListener('click', resetForm);
 
+    function copyChannelId() {
+      const inp = $('channelIdDisplay');
+      if (!inp.value) return;
+      navigator.clipboard.writeText(inp.value).then(() => showToast('Channel ID copied')).catch(() => { inp.select(); document.execCommand('copy'); });
+    }
+
     function populateForm(ch) {
       editDocId.value = ch.id;
       formTitle.textContent = 'Edit Channel';
@@ -1059,6 +1074,8 @@
       channelName.value = ch.name || '';
       channelCat.value = ch.category || 'Live TV';
       channelLogo.value = ch.logoUrl || '';
+      $('channelIdField').classList.remove('hidden');
+      $('channelIdDisplay').value = ch.id;
       const countryEl = $('channelCountry');
       countryEl.value = ch.country || '';
       isLive = !!ch.isLive;
