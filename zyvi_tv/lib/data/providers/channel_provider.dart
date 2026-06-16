@@ -1,4 +1,4 @@
-import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../main.dart';
@@ -6,18 +6,35 @@ import '../../services/hive_cache_service.dart';
 import '../models/channel_model.dart';
 
 const int _pageSize = 20;
-const int _batchYieldInterval = 200;
 
-Future<List<ChannelModel>> _parseDocsBatched(
+List<Map<String, dynamic>> _parseInIsolate(List<Map<String, dynamic>> raw) {
+  return raw.map((m) {
+    final id = m['__id__'] as String;
+    final data = Map<String, dynamic>.from(m);
+    data.remove('__id__');
+    return ChannelModel.fromMap(data, id).toMap();
+  }).toList();
+}
+
+Future<List<ChannelModel>> _parseDocsOffMain(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) async {
-  final channels = <ChannelModel>[];
-  for (int i = 0; i < docs.length; i++) {
-    channels.add(ChannelModel.fromMap(docs[i].data(), docs[i].id));
-    if (i > 0 && i % _batchYieldInterval == 0) {
-      await Future.delayed(Duration.zero);
-    }
+  final raw = docs.map((d) {
+    final m = Map<String, dynamic>.from(d.data());
+    m['__id__'] = d.id;
+    return m;
+  }).toList();
+
+  if (raw.length < 100) {
+    return raw.map((m) {
+      final id = m['__id__'] as String;
+      final data = Map<String, dynamic>.from(m);
+      data.remove('__id__');
+      return ChannelModel.fromMap(data, id);
+    }).toList();
   }
-  return channels;
+
+  final resultMaps = await compute(_parseInIsolate, raw);
+  return resultMaps.map((m) => ChannelModel.fromJson(m)).toList();
 }
 
 final liveChannelsProvider =
@@ -33,7 +50,7 @@ final liveChannelsProvider =
       final docs = snapshot.docs
           .map((d) => d as QueryDocumentSnapshot<Map<String, dynamic>>)
           .toList();
-      return _parseDocsBatched(docs);
+      return _parseDocsOffMain(docs);
     }).handleError((_) => <ChannelModel>[]);
   } catch (_) {
     return const Stream.empty();
@@ -134,7 +151,7 @@ class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
         .map((d) => d as QueryDocumentSnapshot<Map<String, dynamic>>)
         .toList();
 
-    final channels = await _parseDocsBatched(docs);
+    final channels = await _parseDocsOffMain(docs);
 
     await hive.cacheChannels(channels);
 
@@ -233,7 +250,7 @@ class PaginatedChannelsNotifier
       final docs = snapshot.docs
           .map((d) => d as QueryDocumentSnapshot<Map<String, dynamic>>)
           .toList();
-      final channels = await _parseDocsBatched(docs);
+      final channels = await _parseDocsOffMain(docs);
 
       _lastDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
       _hasMore = snapshot.docs.length >= _pageSize;
@@ -269,7 +286,7 @@ class PaginatedChannelsNotifier
       final docs = snapshot.docs
           .map((d) => d as QueryDocumentSnapshot<Map<String, dynamic>>)
           .toList();
-      final newChannels = await _parseDocsBatched(docs);
+      final newChannels = await _parseDocsOffMain(docs);
 
       _lastDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
       _hasMore = snapshot.docs.length >= _pageSize;
