@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/providers/demo_account_provider.dart';
 import '../widgets/ad_banner_widget.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -88,6 +89,10 @@ class SettingsScreen extends StatelessWidget {
                   _sectionHeader('About'),
                   _settingTile(Icons.info, 'Version', '1.0.0'),
                   _settingTile(Icons.description, 'Licenses', ''),
+                  const SizedBox(height: 12),
+                  _disclaimerCard(context),
+                  const SizedBox(height: 12),
+                  _demoAccountTile(context),
                 ],
               ),
             ),
@@ -131,6 +136,99 @@ class SettingsScreen extends StatelessWidget {
               : const Icon(Icons.chevron_right,
                   color: AppTheme.textSecondary),
         ),
+    );
+  }
+
+  Widget _disclaimerCard(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: AppTheme.glassCardDecoration(radius: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.copyright, color: AppTheme.accentPurple, size: 18),
+              const SizedBox(width: 8),
+              const Text(
+                'Copyright Disclaimer',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Zyvi TV does not host, store, or distribute any copyrighted content. '
+            'This application aggregates publicly available HLS streaming links. '
+            'All content is sourced from third-party public platforms. '
+            'If you believe any content infringes your copyright, please contact '
+            'dmca@zyvi.tv for prompt removal.',
+            style: TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 12,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _demoAccountTile(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: AppTheme.glassCardDecoration(radius: 14),
+      child: Row(
+        children: [
+          const Icon(Icons.person, color: AppTheme.accentPurple, size: 18),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Demo Account',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'demo@zyvi.tv / demo1234',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () => DemoAccountService.login(context),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: AppTheme.accentGradient,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'Login',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

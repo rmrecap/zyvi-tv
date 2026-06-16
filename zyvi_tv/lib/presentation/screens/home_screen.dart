@@ -8,6 +8,12 @@ import '../../data/models/channel_model.dart';
 import '../../data/providers/ad_provider.dart';
 import '../../data/providers/app_settings_provider.dart';
 import '../../data/providers/channel_provider.dart';
+import '../../data/providers/home_layout_provider.dart';
+import '../sections/banner_slider.dart';
+import '../sections/live_now_row.dart';
+import '../sections/news_row.dart';
+import '../sections/trending_row.dart';
+import '../sections/categories_row.dart';
 import '../widgets/ad_banner_widget.dart';
 import '../widgets/channel_card.dart';
 import '../widgets/compact_channel_card.dart';
@@ -87,7 +93,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final filterLabel = AppConstants.filterCategories[selectedIndex];
     final isLiveNow = filterLabel == 'LIVE NOW';
     final liveChannelsAsync = ref.watch(liveChannelsProvider);
-    final categoriesAsync = ref.watch(categoriesProvider);
+    final layoutAsync = ref.watch(homeLayoutProvider);
 
     ref.listen<int>(selectedFilterIndexProvider, (_, nextIndex) {
       final label = AppConstants.filterCategories[nextIndex];
@@ -122,6 +128,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       },
     );
 
+    return _buildHomePage(isLiveNow, liveChannelsAsync, layoutAsync);
+  }
+
+  Widget _buildHomePage(
+    bool isLiveNow,
+    AsyncValue<List<ChannelModel>> liveAsync,
+    AsyncValue<List<String>> layoutAsync,
+  ) {
     return Column(
       children: [
         Padding(
@@ -150,18 +164,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         const FilterBar(),
         const SizedBox(height: 4),
         Expanded(
-          child: ListView(
-            physics: const BouncingScrollPhysics(),
-            controller: _scrollController,
-            children: [
-              if (isLiveNow)
-                ..._buildHorizontalSections(liveChannelsAsync, categoriesAsync),
-              if (isLiveNow)
-                _buildChannelListSection(
-                    liveChannelsAsync, 'Live Channels'),
-              if (!isLiveNow)
-                _buildPaginatedSection(),
-            ],
+          child: layoutAsync.when(
+            data: (sectionOrder) {
+              return ListView(
+                physics: const BouncingScrollPhysics(),
+                controller: _scrollController,
+                children: [
+                  if (isLiveNow)
+                    ...sectionOrder
+                        .map((id) => _buildSection(id, liveAsync))
+                        .where((w) => w != null)
+                        .cast<Widget>(),
+                  if (isLiveNow)
+                    _buildChannelListSection(
+                      liveAsync,
+                      'Live Channels',
+                    ),
+                  if (!isLiveNow) _buildPaginatedSection(),
+                  const SizedBox(height: 80),
+                ],
+              );
+            },
+            loading: () => const ShimmerLoader(),
+            error: (_, __) => const ShimmerLoader(),
           ),
         ),
         const AdBannerWidget(),
@@ -169,157 +194,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  List<Widget> _buildHorizontalSections(
+  Widget? _buildSection(
+    String sectionId,
     AsyncValue<List<ChannelModel>> liveAsync,
-    AsyncValue<List<CategoryInfo>> catsAsync,
   ) {
-    final sections = <Widget>[];
-
-    final liveData = liveAsync.valueOrNull;
-    if (liveData != null && liveData.isNotEmpty) {
-      sections.add(_buildHorizontalSection(
-        'Live Now',
-        liveData.take(10).toList(),
-      ));
+    switch (sectionId) {
+      case 'banner_slider':
+        return const BannerSlider();
+      case 'live_now':
+        return const LiveNowRow();
+      case 'news_channels':
+        return const NewsRow();
+      case 'trending':
+        return const TrendingRow();
+      case 'categories':
+        return const CategoriesRow();
+      default:
+        return null;
     }
-
-    final catsData = catsAsync.valueOrNull;
-    if (catsData != null && catsData.isNotEmpty) {
-      sections.add(_buildCategoryStrip(catsData));
-    }
-
-    return sections;
-  }
-
-  Widget _buildHorizontalSection(String title, List<ChannelModel> channels) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
-          child: Row(
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                'See all',
-                style: TextStyle(
-                  color: AppTheme.accentPurple.withValues(alpha: 0.8),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(
-          height: 110,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: channels.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 4),
-            itemBuilder: (context, index) {
-              final channel = channels[index];
-              return CompactChannelCard(
-                channel: channel,
-                onTap: () => _onChannelTap(context, ref, channel),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCategoryStrip(List<CategoryInfo> categories) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(24, 16, 24, 8),
-          child: Text(
-            'Categories',
-            style: TextStyle(
-              color: AppTheme.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        SizedBox(
-          height: 36,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: categories.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              final cat = categories[index];
-              final isLast = index == categories.length - 1;
-              return GestureDetector(
-                onTap: () => Navigator.pushNamed(context, '/category-detail',
-                    arguments: cat.name),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    gradient: isLast ? AppTheme.accentGradient : null,
-                    color: isLast ? null : AppTheme.surface,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: isLast
-                          ? Colors.transparent
-                          : AppTheme.microBorder,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        cat.name,
-                        style: TextStyle(
-                          color: isLast
-                              ? AppTheme.textPrimary
-                              : AppTheme.textSecondary,
-                          fontSize: 13,
-                          fontWeight:
-                              isLast ? FontWeight.w600 : FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '${cat.channelCount}',
-                          style: const TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
   }
 
   Widget _buildChannelListSection(
