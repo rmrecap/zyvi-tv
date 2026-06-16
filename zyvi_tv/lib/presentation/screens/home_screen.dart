@@ -237,7 +237,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       loading: () => const SizedBox(height: 100, child: ShimmerLoader()),
-      error: (err, _) => const SizedBox.shrink(),
+      error: (err, _) => _buildRetryWidget(),
     );
   }
 
@@ -277,7 +277,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
       },
       loading: () => const SizedBox(height: 100, child: ShimmerLoader()),
-      error: (err, _) => const SizedBox.shrink(),
+      error: (err, _) => _buildRetryWidget(),
     );
   }
 
@@ -309,6 +309,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           onTap: () => _onChannelTap(context, ref, channel),
         );
       },
+    );
+  }
+
+  Widget _buildRetryWidget() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off,
+                color: AppTheme.textSecondary, size: 48),
+            const SizedBox(height: 12),
+            const Text(
+              'Failed to load channels',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () => ref.invalidate(allChannelsProvider),
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Retry'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.accentPurple,
+                side: const BorderSide(color: AppTheme.accentPurple),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

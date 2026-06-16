@@ -188,6 +188,7 @@
               <option value="">All Countries</option>
             </select>
             <button id="filterClearBtn" class="px-3 py-2 rounded-lg bg-[#1A2035] text-gray-300 text-xs hover:brightness-125 transition-all">Clear</button>
+            <button id="bulkEditToggleBtn" class="px-3 py-2 rounded-lg border border-[#7F00FF]/50 text-[#7F00FF] text-xs font-semibold hover:bg-[#7F00FF]/10 transition-all">&#x270E; Bulk Edit</button>
           </div>
 
           <!-- Bulk Action Toolbar -->
@@ -221,12 +222,33 @@
         <div class="bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
           <h3 class="text-white font-semibold text-base mb-5 flex items-center gap-2"><span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>Paste M3U Playlist</h3>
           <p class="text-[#8A99AD] text-xs mb-3 opacity-70">Paste your standard <code class="text-[#7F00FF]">#EXTM3U</code> playlist text below.</p>
-          <textarea id="m3uInput" rows="10" placeholder="#EXTM3U&#10;#EXTINF:-1 tvg-name=&quot;HBO HD&quot; tvg-logo=&quot;https://...&quot;,HBO HD&#10;https://cdn.example.com/hbo.m3u8" class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-4 py-3 text-gray-100 text-sm font-mono placeholder-gray-700 focus:border-[#7F00FF] transition-bg resize-y"></textarea>
+          <textarea id="m3uInput" rows="10" placeholder="#EXTM3U&#10;#EXTINF:-1 tvg-name=&quot;HBO HD&quot; tvg-logo=&quot;https://...&quot; group-title=&quot;Sports&quot;,HBO HD&#10;https://cdn.example.com/hbo.m3u8" class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-4 py-3 text-gray-100 text-sm font-mono placeholder-gray-700 focus:border-[#7F00FF] transition-bg resize-y"></textarea>
           <div class="flex items-center gap-3 mt-4">
             <button type="button" id="parseM3UBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white font-semibold text-sm hover:brightness-110 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed">&#x1F50D; Parse M3U</button>
             <span id="parseStats" class="text-[#8A99AD] text-xs"></span>
           </div>
         </div>
+        <div class="bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
+          <h3 class="text-white font-semibold text-base mb-3 flex items-center gap-2"><span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>Auto-Categorize &amp; Smart Regex</h3>
+          <p class="text-[#8A99AD] text-xs mb-4 opacity-70">
+            Channels are categorized via <code class="text-[#7F00FF]">group-title</code> when present in the M3U. When absent, <code class="text-[#7F00FF]">categorizeByName()</code> applies a 10-category keyword dictionary (<strong class="text-gray-300">Sports, News, Movies &amp; Series, Music, Kids, Documentary, Entertainment, Religious, Business, Science &amp; Tech</strong>) as fallback. Use the regex tool below to batch-rename parsed channel names before import.
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+            <div>
+              <label for="regexPattern" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">Regex Pattern</label>
+              <input type="text" id="regexPattern" placeholder="e.g. ^(.*?)\s*\|" class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm font-mono placeholder-gray-600 focus:border-[#7F00FF]" />
+            </div>
+            <div>
+              <label for="regexReplace" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">Replacement</label>
+              <input type="text" id="regexReplace" placeholder="e.g. $1 (cleaned)" class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm font-mono placeholder-gray-600 focus:border-[#7F00FF]" />
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <button type="button" id="applyRegexBtn" class="px-5 py-2 rounded-xl bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white font-semibold text-xs hover:brightness-110 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed">&#x1F50D; Apply Regex to Parsed</button>
+            <span id="regexStatus" class="text-[#8A99AD] text-xs"></span>
+          </div>
+        </div>
+
         <div id="m3uPreviewSection" class="hidden bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-white font-semibold text-base flex items-center gap-2"><span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>Parsed Channels Preview</h3>
@@ -502,6 +524,7 @@
         adminPanel.classList.remove('hidden');
         headerRight.innerHTML = `<span class="text-[#8A99AD] text-xs hidden sm:inline">${escapeHtml(user.email)}</span><button id="logoutBtn" class="px-3 py-1.5 rounded-lg bg-[#1A2035] text-gray-300 text-xs font-medium hover:brightness-125 transition-all">Sign Out</button>`;
         $('logoutBtn').addEventListener('click', () => auth.signOut());
+        switchTab('channels');
         loadCategories();
         loadChannelsPage(1);
         loadMonetizationForm();
@@ -521,11 +544,8 @@
     const PAGE_SIZE = 20;
     let currentPage = 1;
     let totalPages = 1;
-    let lastDocs = [null]; // array of last DocumentSnapshot per page (index = page-1)
-    let firstDocs = [null];
-    let channelsCache = {}; // page -> channel array
+    let lastDocs = [null];
     let filterTimer = null;
-    let prevFilterSnapshot = null;
 
     const searchInput = $('searchInput');
     const categoryFilter = $('categoryFilter');
@@ -554,7 +574,7 @@
     }
 
     // ================================================================
-    //  LOAD CATEGORIES (populate both form dropdowns + filter dropdown)
+    //  LOAD CATEGORIES (populate form + filter + bulk dropdowns)
     // ================================================================
 
     async function loadCategories() {
@@ -572,7 +592,6 @@
         const formSel = $('channelCategory');
         const bulkCatSel = $('bulkCategorySelect');
 
-        // Preserve current selection
         const currentFilter = filterSel.value;
 
         const buildOpts = (sel) => {
@@ -608,13 +627,11 @@
       const filters = getFilterValues();
       const hasFilters = filtersActive();
 
-      // If filters active, do client-side filtering from a full query
       if (hasFilters) {
         await loadFilteredChannels(page);
         return;
       }
 
-      // Normal pagination without filters
       try {
         let query = db.collection('zyvi_channels')
           .orderBy('updatedAt', 'desc')
@@ -634,7 +651,6 @@
         lastDocs[page] = docs.length > 0 ? docs[docs.length - 1].ref : null;
 
         if (page === 1) {
-          // Query for total count approximation
           const countSnap = await db.collection('zyvi_channels').get();
           const total = countSnap.size;
           totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -651,15 +667,12 @@
       const filters = getFilterValues();
 
       try {
-        // Fetch all channels (filtered client-side for simplicity)
-        // In production, use composite indexes + server-side filtering
         let query = db.collection('zyvi_channels').orderBy('updatedAt', 'desc');
 
         const snap = await query.get();
         let allChannels = [];
         snap.forEach(doc => allChannels.push({ id: doc.id, ...doc.data() }));
 
-        // Apply filters
         if (filters.search) {
           allChannels = allChannels.filter(ch => ch.name && ch.name.toLowerCase().includes(filters.search));
         }
@@ -787,16 +800,6 @@
       pgLast.disabled = page >= totalPages;
 
       paginationBar.classList.remove('hidden');
-
-      if (!filtersActive()) {
-        const total = channelCount.textContent;
-        if (!total) {
-          // Update count
-          db.collection('zyvi_channels').get().then(snap => {
-            channelCount.textContent = `${snap.size} channel${snap.size !== 1 ? 's' : ''}`;
-          });
-        }
-      }
     }
 
     pgFirst.addEventListener('click', () => loadChannelsPage(1));
@@ -804,7 +807,6 @@
     pgNext.addEventListener('click', () => { if (currentPage < totalPages) loadChannelsPage(currentPage + 1); });
     pgLast.addEventListener('click', () => loadChannelsPage(totalPages));
 
-    // Debounced filter
     function onFilterChange() {
       clearTimeout(filterTimer);
       filterTimer = setTimeout(() => loadChannelsPage(1), 350);
@@ -826,13 +828,13 @@
     const bulkCategorySelect = $('bulkCategorySelect');
     const bulkApplyBtn = $('bulkApplyBtn');
     const bulkClearBtn = $('bulkClearBtn');
+    const bulkEditToggleBtn = $('bulkEditToggleBtn');
 
     selectAllCheck.addEventListener('change', () => {
       const checked = selectAllCheck.checked;
       currentRenderedChannels.forEach(ch => {
         if (checked) selectedIds.add(ch.id); else selectedIds.delete(ch.id);
       });
-      // Re-render to reflect checkbox states
       renderChannels(currentRenderedChannels);
       updateBulkToolbar();
     });
@@ -840,6 +842,20 @@
     bulkClearBtn.addEventListener('click', () => {
       selectedIds.clear();
       selectAllCheck.checked = false;
+      renderChannels(currentRenderedChannels);
+      updateBulkToolbar();
+    });
+
+    bulkEditToggleBtn.addEventListener('click', () => {
+      const toolbar = $('bulkToolbar');
+      const isHidden = toolbar.classList.contains('hidden');
+      if (isHidden) {
+        currentRenderedChannels.forEach(ch => selectedIds.add(ch.id));
+        selectAllCheck.checked = true;
+      } else {
+        selectedIds.clear();
+        selectAllCheck.checked = false;
+      }
       renderChannels(currentRenderedChannels);
       updateBulkToolbar();
     });
@@ -875,7 +891,7 @@
     });
 
     // ================================================================
-    //  CHANNEL FORM (unchanged logic from original)
+    //  CHANNEL FORM
     // ================================================================
 
     const channelForm = $('channelForm');
@@ -1033,7 +1049,7 @@
     tabAppConfigBtn.addEventListener('click', () => switchTab('appconfig'));
 
     // ================================================================
-    //  M3U PARSER (kept from original)
+    //  M3U PARSER — Auto-Categorize + tvg-logo + group-title
     // ================================================================
 
     const m3uInput = $('m3uInput');
@@ -1087,7 +1103,6 @@
       const tvgNameRegex = /tvg-name\s*=\s*"([^"]*)"/i;
       const tvgLogoRegex = /tvg-logo\s*=\s*"([^"]*)"/i;
       const logoRegex = /logo\s*=\s*"([^"]*)"/i;
-      const streamRegex = /^https?:\/\/[^\s"'<>]+(?:\.[^\s"'<>]*)?(?:m3u8|mp4|flv|ts|m3u)(?:\?[^\s"'<>]*)?$/i;
       const genericStreamRegex = /^https?:\/\/[^\s"'<>]+\.(?:m3u8|mp4|flv|ts|m3u)(?:\?[^\s"'<>]*)?$/i;
       const fallbackStreamRegex = /^https?:\/\/[^\s"'<>]+$/i;
       let currentExtinf = null;
@@ -1106,12 +1121,9 @@
           const logoUrl = (tvgLogoMatch || logoMatch)
             ? ((tvgLogoMatch || logoMatch)[1].trim())
             : '';
-
-          // group-title -> category mapping
           const category = groupTitleMatch
             ? groupTitleMatch[1].trim()
             : categorizeByName(displayName);
-
           currentExtinf = { name: displayName, logoUrl, category };
           continue;
         }
@@ -1172,6 +1184,32 @@
       importSummary.classList.add('hidden');
       parseStats.textContent = `${parsedChannels.length} channels found`;
       showToast(`Parsed ${parsedChannels.length} channels`);
+    });
+
+    const regexPattern = $('regexPattern');
+    const regexReplace = $('regexReplace');
+    const applyRegexBtn = $('applyRegexBtn');
+    const regexStatus = $('regexStatus');
+
+    applyRegexBtn.addEventListener('click', () => {
+      const pattern = regexPattern.value.trim();
+      const replacement = regexReplace.value.trim();
+      if (!pattern) { showToast('Enter a regex pattern first', 'error'); return; }
+      if (parsedChannels.length === 0) { showToast('Parse an M3U playlist first', 'error'); return; }
+      try {
+        const regex = new RegExp(pattern, 'g');
+        let count = 0;
+        parsedChannels = parsedChannels.map(ch => {
+          const newName = ch.name.replace(regex, replacement);
+          if (newName !== ch.name) count++;
+          return { ...ch, name: newName, category: categorizeByName(newName) };
+        });
+        renderPreview(parsedChannels);
+        regexStatus.textContent = `${count} channel${count !== 1 ? 's' : ''} renamed`;
+        showToast(`Applied regex to ${count} channels`);
+      } catch (err) {
+        showToast('Invalid regex: ' + err.message, 'error');
+      }
     });
 
     async function checkLink(url, timeoutMs = 5000) {
@@ -1236,7 +1274,7 @@
     });
 
     // ================================================================
-    //  GLOBAL IPTV LIBRARY SYNC (kept from original)
+    //  GLOBAL IPTV LIBRARY SYNC
     // ================================================================
 
     const syncGlobalBtn = $('syncGlobalBtn');
@@ -1290,7 +1328,7 @@
           if (existingUrls.has(entry.url)) { dupes++; continue; }
           const channelName = entry.name || entry.id || 'Channel ' + (i + 1);
           let category = entry.category || 'General Live TV';
-          if (!entry.category || entry.category === '') category = categorizeChannel(channelName);
+          if (!entry.category || entry.category === '') category = categorizeByName(channelName);
           let reachable = false;
           try { const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 5000); const probe = await fetch(entry.url, { method: 'HEAD', signal: controller.signal, mode: 'no-cors' }); clearTimeout(timer); reachable = probe.type === 'opaque' || probe.ok; } catch {}
           if (!reachable) { dead++; continue; }
@@ -1309,7 +1347,7 @@
     });
 
     // ================================================================
-    //  MONETIZATION CONFIG (kept from original)
+    //  MONETIZATION CONFIG
     // ================================================================
 
     const monAppId = $('monAppId');

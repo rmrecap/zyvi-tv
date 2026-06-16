@@ -42,9 +42,9 @@ class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
     try {
       final cached = hive.getCachedChannels();
       if (cached.isNotEmpty) {
-        final prioritized = _prioritizeChannels(cached);
+        final sorted = _sortPriorityFirst(cached);
         _backgroundSync(hive);
-        return prioritized;
+        return sorted;
       }
     } catch (_) {
       // Hive read failed — fall through to network
@@ -53,66 +53,47 @@ class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
     try {
       final channels = await _fetchAndCache(hive)
           .timeout(const Duration(seconds: 5));
-      return _prioritizeChannels(channels);
+      return _sortPriorityFirst(channels);
     } catch (_) {
       try {
         final fallback = hive.getCachedChannels();
-        if (fallback.isNotEmpty) return _prioritizeChannels(fallback);
+        if (fallback.isNotEmpty) return _sortPriorityFirst(fallback);
       } catch (_) {}
       return [];
     }
   }
 
-  /// Maximum number of priority slots at the top of the list.
-  static const int _prioritySlots = 6;
-
-  /// Returns true when [channel] qualifies for a top priority slot.
-  static bool _isPriorityChannel(ChannelModel c) {
-    final cat = c.category.toLowerCase();
-    final name = c.name.toLowerCase();
-    final text = '$cat $name';
-    return c.isLive ||
-        text.contains('world cup') ||
-        text.contains('worldcup') ||
-        text.contains('sports') ||
-        text.contains('sport') ||
-        text.contains('fifa') ||
-        text.contains('tournament') ||
-        text.contains('championship') ||
-        text.contains('champion') ||
-        text.contains('match') ||
-        text.contains('cricket') ||
-        text.contains('football') ||
-        text.contains('soccer') ||
-        text.contains('basketball') ||
-        text.contains('tennis') ||
-        text.contains('olympic') ||
-        text.contains('ufc') ||
-        text.contains('wwe') ||
-        text.contains('boxing') ||
-        text.contains('motogp') ||
-        text.contains('formula 1') ||
-        text.contains('f1 ') ||
-        text.contains('nba') ||
-        text.contains('nfl') ||
-        text.contains('mlb') ||
-        text.contains('nhl');
+  /// Returns true when [channelName]/[category] match a high-priority
+  /// World Cup, Sports, or tournament keyword.
+  static bool _isPriorityChannel(String name, String category) {
+    final text = '${category.toLowerCase()} ${name.toLowerCase()}';
+    return const [
+      'world cup', 'worldcup', 'sports', 'sport', 'fifa', 'tournament',
+      'championship', 'champion', 'match', 'cricket', 'football', 'soccer',
+      'basketball', 'tennis', 'olympic', 'ufc', 'wwe', 'boxing', 'motogp',
+      'formula 1', 'f1 ', 'nba', 'nfl', 'mlb', 'nhl', 'hockey', 'racing',
+      'motorsport', 'wrestling', 'badminton', 'volleyball', 'rugby', 'golf',
+    ].any((kw) => text.contains(kw));
   }
 
-  /// Pins priority channels at indexes 0–5, keeps the rest in their original
-  /// order below. The result always has the same length as [channels].
-  static List<ChannelModel> _prioritizeChannels(List<ChannelModel> channels) {
-    if (channels.length <= _prioritySlots) return channels;
-    final priority = <ChannelModel>[];
-    final rest = <ChannelModel>[];
-    for (final c in channels) {
-      if (priority.length < _prioritySlots && _isPriorityChannel(c)) {
-        priority.add(c);
-      } else {
-        rest.add(c);
-      }
+  /// Sorts [channels] so that the first 6 slots (0–5) are filled with
+  /// priority (World Cup / Sports) streams. Remaining channels keep their
+  /// relative order below.
+  static List<ChannelModel> _sortPriorityFirst(List<ChannelModel> channels) {
+    if (channels.length <= 6) return channels;
+    try {
+      final sorted = [...channels];
+      sorted.sort((a, b) {
+        final aPrio = a.isLive || _isPriorityChannel(a.name, a.category);
+        final bPrio = b.isLive || _isPriorityChannel(b.name, b.category);
+        if (aPrio && !bPrio) return -1;
+        if (!aPrio && bPrio) return 1;
+        return 0;
+      });
+      return sorted;
+    } catch (_) {
+      return channels;
     }
-    return [...priority, ...rest];
   }
 
   Future<void> _backgroundSync(HiveCacheService hive) async {
@@ -129,7 +110,7 @@ class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
       if (serverTimestamp == localTimestamp) return;
 
       final channels = await _fetchAndCache(hive);
-      state = AsyncData(_prioritizeChannels(channels));
+      state = AsyncData(_sortPriorityFirst(channels));
     } catch (_) {
       // Background sync failed — cached data remains
     }
@@ -167,14 +148,14 @@ class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
       try {
         final hive = ref.read(hiveCacheServiceProvider);
         final channels = await _fetchAndCache(hive);
-        state = AsyncData(_prioritizeChannels(channels));
+        state = AsyncData(_sortPriorityFirst(channels));
       } catch (_) {}
     } else {
       state = const AsyncLoading();
       try {
         final hive = ref.read(hiveCacheServiceProvider);
         final channels = await _fetchAndCache(hive);
-        state = AsyncData(_prioritizeChannels(channels));
+        state = AsyncData(_sortPriorityFirst(channels));
       } catch (err, st) {
         state = AsyncError(err, st);
       }
