@@ -229,24 +229,10 @@
           </div>
         </div>
         <div class="bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
-          <h3 class="text-white font-semibold text-base mb-3 flex items-center gap-2"><span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>Auto-Categorize &amp; Smart Regex</h3>
-          <p class="text-[#8A99AD] text-xs mb-4 opacity-70">
-            Channels are categorized via <code class="text-[#7F00FF]">group-title</code> when present in the M3U. When absent, <code class="text-[#7F00FF]">categorizeByName()</code> applies a 10-category keyword dictionary (<strong class="text-gray-300">Sports, News, Movies &amp; Series, Music, Kids, Documentary, Entertainment, Religious, Business, Science &amp; Tech</strong>) as fallback. Use the regex tool below to batch-rename parsed channel names before import.
+          <h3 class="text-white font-semibold text-base mb-3 flex items-center gap-2"><span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>Auto-Categorization Active</h3>
+          <p class="text-[#8A99AD] text-xs opacity-70">
+            Categorization is fully automatic. When <code class="text-[#7F00FF]">group-title="..."</code> is present in the M3U it is used directly. When absent, <code class="text-[#7F00FF]">categorizeByName()</code> applies a built-in 10-category keyword dictionary (<strong class="text-gray-300">Sports, News, Movies &amp; Series, Music, Kids, Documentary, Entertainment, Religious, Business, Science &amp; Tech</strong>) with 25+ sports-specific tournament keywords (World Cup, FIFA, NBA, NFL, Olympic, UFC, etc.) to guarantee World Cup / Sports priority sorting on the mobile client. No manual regex input is required — click <strong class="text-gray-300">Parse M3U</strong> above to run the full pipeline automatically.
           </p>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-            <div>
-              <label for="regexPattern" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">Regex Pattern</label>
-              <input type="text" id="regexPattern" placeholder="e.g. ^(.*?)\s*\|" class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm font-mono placeholder-gray-600 focus:border-[#7F00FF]" />
-            </div>
-            <div>
-              <label for="regexReplace" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">Replacement</label>
-              <input type="text" id="regexReplace" placeholder="e.g. $1 (cleaned)" class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm font-mono placeholder-gray-600 focus:border-[#7F00FF]" />
-            </div>
-          </div>
-          <div class="flex items-center gap-3">
-            <button type="button" id="applyRegexBtn" class="px-5 py-2 rounded-xl bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white font-semibold text-xs hover:brightness-110 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed">&#x1F50D; Apply Regex to Parsed</button>
-            <span id="regexStatus" class="text-[#8A99AD] text-xs"></span>
-          </div>
         </div>
 
         <div id="m3uPreviewSection" class="hidden bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
@@ -1184,32 +1170,6 @@
       importSummary.classList.add('hidden');
       parseStats.textContent = `${parsedChannels.length} channels found`;
       showToast(`Parsed ${parsedChannels.length} channels`);
-    });
-
-    const regexPattern = $('regexPattern');
-    const regexReplace = $('regexReplace');
-    const applyRegexBtn = $('applyRegexBtn');
-    const regexStatus = $('regexStatus');
-
-    applyRegexBtn.addEventListener('click', () => {
-      const pattern = regexPattern.value.trim();
-      const replacement = regexReplace.value.trim();
-      if (!pattern) { showToast('Enter a regex pattern first', 'error'); return; }
-      if (parsedChannels.length === 0) { showToast('Parse an M3U playlist first', 'error'); return; }
-      try {
-        const regex = new RegExp(pattern, 'g');
-        let count = 0;
-        parsedChannels = parsedChannels.map(ch => {
-          const newName = ch.name.replace(regex, replacement);
-          if (newName !== ch.name) count++;
-          return { ...ch, name: newName, category: categorizeByName(newName) };
-        });
-        renderPreview(parsedChannels);
-        regexStatus.textContent = `${count} channel${count !== 1 ? 's' : ''} renamed`;
-        showToast(`Applied regex to ${count} channels`);
-      } catch (err) {
-        showToast('Invalid regex: ' + err.message, 'error');
-      }
     });
 
     async function checkLink(url, timeoutMs = 5000) {

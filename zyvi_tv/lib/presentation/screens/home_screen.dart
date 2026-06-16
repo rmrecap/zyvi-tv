@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:better_player_enhanced/better_player.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/channel_model.dart';
@@ -32,8 +31,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentTab = 0;
   final ScrollController _scrollController = ScrollController();
-  final List<BetterPlayerController> _preCacheControllers = [];
-  bool _preCached = false;
 
   @override
   void initState() {
@@ -50,9 +47,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
-    for (final c in _preCacheControllers) {
-      c.dispose();
-    }
     super.dispose();
   }
 
@@ -102,32 +96,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     });
 
-    ref.listen<AsyncValue<List<ChannelModel>>>(
-      allChannelsProvider,
-      (previous, next) {
-        next.whenData((channels) {
-          if (_preCached || channels.isEmpty) return;
-          _preCached = true;
-          for (int i = 0; i < channels.length && i < 3; i++) {
-            final url = channels[i].sources.isNotEmpty
-                ? channels[i].sources.first.url
-                : '';
-            if (url.isEmpty) continue;
-            final cacheCtrl = BetterPlayerController(
-              const BetterPlayerConfiguration(autoPlay: false),
-            );
-            cacheCtrl.preCache(BetterPlayerDataSource.network(
-              url,
-              cacheConfiguration: const BetterPlayerCacheConfiguration(
-                useCache: true,
-              ),
-            ));
-            _preCacheControllers.add(cacheCtrl);
-          }
-        });
-      },
-    );
-
     return _buildHomePage(isLiveNow, liveChannelsAsync, layoutAsync);
   }
 
@@ -136,60 +104,60 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     AsyncValue<List<ChannelModel>> liveAsync,
     AsyncValue<List<String>> layoutAsync,
   ) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          child: Row(
-            children: [
-              _buildLogo(),
-              const SizedBox(width: 10),
-              const Text(
-                'Zyvi TV',
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      controller: _scrollController,
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            child: Row(
+              children: [
+                _buildLogo(),
+                const SizedBox(width: 10),
+                const Text(
+                  'Zyvi TV',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
                 ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () => Navigator.pushNamed(context, '/settings'),
-                child: const Icon(Icons.settings, color: AppTheme.textSecondary),
-              ),
-            ],
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/settings'),
+                  child: const Icon(Icons.settings, color: AppTheme.textSecondary),
+                ),
+              ],
+            ),
           ),
         ),
-        const FilterBar(),
-        const SizedBox(height: 4),
-        Expanded(
-          child: layoutAsync.when(
-            data: (sectionOrder) {
-              return ListView(
-                physics: const BouncingScrollPhysics(),
-                controller: _scrollController,
-                children: [
-                  if (isLiveNow)
-                    ...sectionOrder
-                        .map((id) => _buildSection(id, liveAsync))
-                        .where((w) => w != null)
-                        .cast<Widget>(),
-                  if (isLiveNow)
-                    _buildChannelListSection(
-                      liveAsync,
-                      'Live Channels',
-                    ),
-                  if (!isLiveNow) _buildPaginatedSection(),
-                  const SizedBox(height: 80),
-                ],
+        const SliverToBoxAdapter(child: FilterBar()),
+        const SliverToBoxAdapter(child: SizedBox(height: 4)),
+        layoutAsync.when(
+          data: (sectionOrder) {
+            final sections = <Widget>[];
+            if (isLiveNow) {
+              sections.addAll(
+                sectionOrder
+                    .map((id) => _buildSection(id, liveAsync))
+                    .where((w) => w != null)
+                    .cast<Widget>(),
               );
-            },
-            loading: () => const ShimmerLoader(),
-            error: (_, __) => const ShimmerLoader(),
-          ),
+              sections.add(_buildChannelListSection(liveAsync, 'Live Channels'));
+            } else {
+              sections.add(_buildPaginatedSection());
+            }
+            sections.add(const SizedBox(height: 80));
+            return SliverList(
+              delegate: SliverChildListDelegate(sections),
+            );
+          },
+          loading: () => const SliverToBoxAdapter(child: ShimmerLoader()),
+          error: (_, __) => const SliverToBoxAdapter(child: ShimmerLoader()),
         ),
-        const AdBannerWidget(),
+        const SliverToBoxAdapter(child: AdBannerWidget()),
       ],
     );
   }
@@ -284,9 +252,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildChannelList(List<ChannelModel> channels, bool isLoadingMore) {
     return ListView.builder(
       shrinkWrap: true,
+      cacheExtent: 500,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: channels.length + (isLoadingMore ? 1 : 0),
       padding: const EdgeInsets.only(top: 4, bottom: 24),
+      addAutomaticKeepAlives: false,
       itemBuilder: (context, index) {
         if (index == channels.length) {
           return const Padding(
@@ -381,47 +351,58 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 );
               }
-              return ListView(
+              return CustomScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: 24),
-                children: [
-                  SizedBox(
-                    height: 110,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: channels.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 4),
-                      itemBuilder: (context, index) {
-                        final channel = channels[index];
-                        return CompactChannelCard(
-                          channel: channel,
-                          onTap: () =>
-                              _onChannelTap(context, ref, channel),
-                        );
-                      },
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(24, 20, 24, 8),
-                    child: Text(
-                      'All Live Channels',
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: 110,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: channels.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 4),
+                        itemBuilder: (context, index) {
+                          final channel = channels[index];
+                          return CompactChannelCard(
+                            channel: channel,
+                            onTap: () =>
+                                _onChannelTap(context, ref, channel),
+                          );
+                        },
                       ),
                     ),
                   ),
-                  ...channels.map((channel) => Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 4),
-                        child: ChannelCard(
-                          channel: channel,
-                          onTap: () =>
-                              _onChannelTap(context, ref, channel),
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(24, 20, 24, 8),
+                      child: Text(
+                        'All Live Channels',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
-                      )),
+                      ),
+                    ),
+                  ),
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final channel = channels[index];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 4),
+                          child: ChannelCard(
+                            channel: channel,
+                            onTap: () =>
+                                _onChannelTap(context, ref, channel),
+                          ),
+                        );
+                      },
+                      childCount: channels.length,
+                    ),
+                  ),
                 ],
               );
             },
@@ -505,47 +486,58 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   .take(10)
                   .toList();
 
-              return ListView(
+              return CustomScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: 24),
-                children: [
-                  SizedBox(
-                    height: 110,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: live.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 4),
-                      itemBuilder: (context, index) {
-                        final channel = live[index];
-                        return CompactChannelCard(
-                          channel: channel,
-                          onTap: () =>
-                              _onChannelTap(context, ref, channel),
-                        );
-                      },
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(24, 20, 24, 8),
-                    child: Text(
-                      'Recently Updated',
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: 110,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: live.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 4),
+                        itemBuilder: (context, index) {
+                          final channel = live[index];
+                          return CompactChannelCard(
+                            channel: channel,
+                            onTap: () =>
+                                _onChannelTap(context, ref, channel),
+                          );
+                        },
                       ),
                     ),
                   ),
-                  ...recent.map((channel) => Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 4),
-                        child: ChannelCard(
-                          channel: channel,
-                          onTap: () =>
-                              _onChannelTap(context, ref, channel),
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(24, 20, 24, 8),
+                      child: Text(
+                        'Recently Updated',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
-                      )),
+                      ),
+                    ),
+                  ),
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final channel = recent[index];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 4),
+                          child: ChannelCard(
+                            channel: channel,
+                            onTap: () =>
+                                _onChannelTap(context, ref, channel),
+                          ),
+                        );
+                      },
+                      childCount: recent.length,
+                    ),
+                  ),
                 ],
               );
             },
