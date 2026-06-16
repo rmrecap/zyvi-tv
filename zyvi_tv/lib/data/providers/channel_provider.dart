@@ -328,3 +328,84 @@ final paginatedChannelsProvider =
 );
 
 final selectedFilterIndexProvider = StateProvider<int>((ref) => 0);
+
+final countriesProvider = FutureProvider<List<CountryInfo>>((ref) async {
+  final channels = await ref.watch(allChannelsProvider.future);
+  final map = <String, int>{};
+  for (final c in channels) {
+    final country = c.country.trim();
+    if (country.isNotEmpty) {
+      map[country] = (map[country] ?? 0) + 1;
+    }
+  }
+  final entries = map.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  return entries
+      .map((e) => CountryInfo(name: e.key, channelCount: e.value))
+      .toList();
+});
+
+class CountryInfo {
+  final String name;
+  final int channelCount;
+  const CountryInfo({required this.name, required this.channelCount});
+}
+
+final customSectionsProvider =
+    FutureProvider<List<CustomSection>>((ref) async {
+  try {
+    final doc = await FirebaseFirestore.instance
+        .collection('app_settings')
+        .doc('custom_sections')
+        .get()
+        .timeout(const Duration(seconds: 3));
+    final data = doc.data();
+    if (data == null) return [];
+    final list = data['sections'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => CustomSection.fromMap(e as Map<String, dynamic>))
+        .where((s) => s.enabled)
+        .toList()
+      ..sort((a, b) => a.order.compareTo(b.order));
+  } catch (_) {
+    return [];
+  }
+});
+
+class CustomSection {
+  final String title;
+  final int order;
+  final int maxItems;
+  final List<String> channelIds;
+  final bool enabled;
+
+  const CustomSection({
+    required this.title,
+    required this.order,
+    required this.maxItems,
+    required this.channelIds,
+    required this.enabled,
+  });
+
+  factory CustomSection.fromMap(Map<String, dynamic> map) {
+    return CustomSection(
+      title: map['title'] as String? ?? '',
+      order: (map['order'] as num?)?.toInt() ?? 0,
+      maxItems: (map['maxItems'] as num?)?.toInt() ?? 10,
+      channelIds: (map['channelIds'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      enabled: map['enabled'] as bool? ?? true,
+    );
+  }
+}
+
+final selectedCountryProvider = StateProvider<String>((ref) => '');
+
+final countryChannelsProvider =
+    FutureProvider.family<List<ChannelModel>, String>((ref, country) async {
+  final allChannels = await ref.watch(allChannelsProvider.future);
+  if (country.isEmpty) return allChannels;
+  return allChannels.where((c) => c.country == country).toList();
+});

@@ -12,6 +12,7 @@ import 'presentation/screens/home_screen.dart';
 import 'presentation/screens/video_player_view.dart';
 import 'presentation/screens/settings_screen.dart';
 import 'presentation/screens/category_channels_screen.dart';
+import 'presentation/screens/country_channels_screen.dart';
 import 'services/hive_cache_service.dart';
 
 late final HiveCacheService hiveCacheService;
@@ -90,6 +91,11 @@ class ZyviTVApp extends StatelessWidget {
             final category = settings.arguments as String;
             return MaterialPageRoute(
               builder: (_) => CategoryChannelsScreen(category: category),
+            );
+          case '/country-detail':
+            final country = settings.arguments as String;
+            return MaterialPageRoute(
+              builder: (_) => CountryChannelsScreen(country: country),
             );
           case '/settings':
             return MaterialPageRoute(

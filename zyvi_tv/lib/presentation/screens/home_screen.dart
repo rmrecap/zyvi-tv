@@ -21,6 +21,7 @@ import '../widgets/curved_bottom_nav.dart';
 import '../widgets/filter_bar.dart';
 import '../widgets/shimmer_loader.dart';
 import 'categories_tab.dart';
+import 'countries_tab.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -72,6 +73,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const CategoriesTab(),
               _buildLiveTab(),
               _buildTrendingTab(),
+              const CountriesTab(),
             ],
           ),
         ),
@@ -150,6 +152,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             } else {
               sections.add(_buildPaginatedSection());
             }
+            sections.add(_buildCustomSections());
             sections.add(const SizedBox(height: 80));
             return SliverList(
               delegate: SliverChildListDelegate(sections),
@@ -181,6 +184,58 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       default:
         return null;
     }
+  }
+
+  Widget _buildCustomSections() {
+    final sectionsAsync = ref.watch(customSectionsProvider);
+    final channelsAsync = ref.watch(allChannelsProvider);
+    final sections = sectionsAsync.valueOrNull ?? [];
+    if (sections.isEmpty) return const SizedBox.shrink();
+    final allChannels = channelsAsync.valueOrNull ?? [];
+    final channelMap = {for (final c in allChannels) c.id: c};
+
+    return Column(
+      children: sections.map((section) {
+        final sectionChannels = section.channelIds
+            .map((id) => channelMap[id])
+            .whereType<ChannelModel>()
+            .take(section.maxItems)
+            .toList();
+        if (sectionChannels.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
+              child: Text(
+                section.title,
+                style: const TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 110,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                itemCount: sectionChannels.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 4),
+                itemBuilder: (context, index) {
+                  final channel = sectionChannels[index];
+                  return CompactChannelCard(
+                    channel: channel,
+                    onTap: () => _onChannelTap(context, ref, channel),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      }).toList(),
+    );
   }
 
   Widget _buildChannelListSection(

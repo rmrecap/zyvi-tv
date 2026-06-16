@@ -1,0 +1,198 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/theme/app_theme.dart';
+import '../../data/providers/channel_provider.dart';
+import '../widgets/shimmer_loader.dart';
+
+class CountriesTab extends ConsumerWidget {
+  const CountriesTab({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final countriesAsync = ref.watch(countriesProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(24, 20, 24, 4),
+          child: Text(
+            'Countries',
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            'Browse channels by country',
+            style: TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: countriesAsync.when(
+            data: (countries) {
+              if (countries.isEmpty) {
+                return const Center(
+                  child: Text(
+                    'No countries found',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                );
+              }
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: GridView.builder(
+                  physics: const BouncingScrollPhysics(),
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 1.3,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
+                  itemCount: countries.length,
+                  itemBuilder: (context, index) {
+                    final country = countries[index];
+                    return _CountryCard(country: country);
+                  },
+                ),
+              );
+            },
+            loading: () => const ShimmerLoader(),
+            error: (err, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.cloud_off,
+                        color: AppTheme.textSecondary, size: 48),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Failed to load countries',
+                      style: TextStyle(color: AppTheme.textSecondary),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: () => ref.invalidate(allChannelsProvider),
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('Retry'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.accentPurple,
+                        side:
+                            const BorderSide(color: AppTheme.accentPurple),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CountryCard extends StatelessWidget {
+  final CountryInfo country;
+  const _CountryCard({required this.country});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(context, '/country-detail',
+            arguments: country.name);
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: _gradientForIndex(country.name.hashCode),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.06),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.accentPurple.withValues(alpha: 0.08),
+              blurRadius: 12,
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.public, color: Colors.white70, size: 28),
+              const Spacer(),
+              Text(
+                country.name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${country.channelCount} channels',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+LinearGradient _gradientForIndex(int hash) {
+  final gradients = [
+    const LinearGradient(
+      colors: [Color(0xFF7F00FF), Color(0xFF4A00E0)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    const LinearGradient(
+      colors: [Color(0xFFE100FF), Color(0xFF7F00FF)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    const LinearGradient(
+      colors: [Color(0xFF00FFCC), Color(0xFF0099FF)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    const LinearGradient(
+      colors: [Color(0xFFFF6B6B), Color(0xFFEE5A24)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    const LinearGradient(
+      colors: [Color(0xFF00B894), Color(0xFF00CEC9)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    const LinearGradient(
+      colors: [Color(0xFF6C5CE7), Color(0xFFA29BFE)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+  ];
+  return gradients[hash.abs() % gradients.length];
+}

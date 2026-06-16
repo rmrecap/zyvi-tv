@@ -25,6 +25,9 @@ class ChannelModel {
   @HiveField(6)
   final DateTime updatedAt;
 
+  @HiveField(7)
+  final String country;
+
   ChannelModel({
     required this.id,
     required this.name,
@@ -33,6 +36,7 @@ class ChannelModel {
     required this.sources,
     required this.isLive,
     required this.updatedAt,
+    this.country = '',
   });
 
   Map<String, dynamic> toMap() {
@@ -44,6 +48,7 @@ class ChannelModel {
       'sources': sources.map((x) => x.toMap()).toList(),
       'isLive': isLive,
       'updatedAt': updatedAt.toIso8601String(),
+      'country': country,
     };
   }
 
@@ -62,6 +67,7 @@ class ChannelModel {
           : map['updatedAt'] is DateTime
               ? map['updatedAt'] as DateTime
               : DateTime.now(),
+      country: map['country'] ?? '',
     );
   }
 

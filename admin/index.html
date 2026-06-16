@@ -110,6 +110,7 @@
       <div class="flex gap-1 bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl p-1">
         <button type="button" id="tabChannelsBtn" class="tab-btn flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white shadow-lg shadow-purple-500/20">&#x1F4FA; Channels</button>
         <button type="button" id="tabM3UBtn" class="tab-btn flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all text-[#8A99AD] hover:text-gray-200 hover:bg-[#1A2035]">&#x1F4E5; Bulk M3U</button>
+        <button type="button" id="tabSectionsBtn" class="tab-btn flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all text-[#8A99AD] hover:text-gray-200 hover:bg-[#1A2035]">&#x1F4CB; Sections</button>
         <button type="button" id="tabMonetizationBtn" class="tab-btn flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all text-[#8A99AD] hover:text-gray-200 hover:bg-[#1A2035]">&#x1F4B0; Monetization</button>
         <button type="button" id="tabAppConfigBtn" class="tab-btn flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all text-[#8A99AD] hover:text-gray-200 hover:bg-[#1A2035]">&#x2699;&#xFE0F; App Config</button>
       </div>
@@ -146,6 +147,41 @@
                 <label for="channelLogo" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">Logo URL</label>
                 <input type="url" id="channelLogo" placeholder="https://example.com/logo.png" class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm placeholder-gray-600 transition-bg focus:border-[#7F00FF]" />
               </div>
+            </div>
+            <div class="mb-4">
+              <label for="channelCountry" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">Country</label>
+              <select id="channelCountry" class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm transition-bg focus:border-[#7F00FF]">
+                <option value="">— Any / Global —</option>
+                <option value="Bangladesh">Bangladesh</option>
+                <option value="India">India</option>
+                <option value="Pakistan">Pakistan</option>
+                <option value="USA">USA</option>
+                <option value="UK">UK</option>
+                <option value="Canada">Canada</option>
+                <option value="Australia">Australia</option>
+                <option value="South Africa">South Africa</option>
+                <option value="Brazil">Brazil</option>
+                <option value="Argentina">Argentina</option>
+                <option value="Germany">Germany</option>
+                <option value="France">France</option>
+                <option value="Spain">Spain</option>
+                <option value="Italy">Italy</option>
+                <option value="Portugal">Portugal</option>
+                <option value="Netherlands">Netherlands</option>
+                <option value="UAE">UAE</option>
+                <option value="Saudi Arabia">Saudi Arabia</option>
+                <option value="Qatar">Qatar</option>
+                <option value="Japan">Japan</option>
+                <option value="China">China</option>
+                <option value="Russia">Russia</option>
+                <option value="Turkey">Turkey</option>
+                <option value="Egypt">Egypt</option>
+                <option value="Nigeria">Nigeria</option>
+                <option value="Kenya">Kenya</option>
+                <option value="Ghana">Ghana</option>
+                <option value="Morocco">Morocco</option>
+                <option value="Tunisia">Tunisia</option>
+              </select>
             </div>
             <div class="mb-4">
               <label class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-2">Stream Sources <span class="text-red-400">*</span></label>
@@ -283,6 +319,51 @@
             <div class="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-center"><div id="globalDeadCount" class="text-xl font-bold text-red-400">0</div><div class="text-[#8A99AD] text-xs mt-0.5">Dead</div></div>
             <div class="bg-yellow-900/20 border border-yellow-700/30 rounded-xl p-3 text-center"><div id="globalDuplicateCount" class="text-xl font-bold text-yellow-400">0</div><div class="text-[#8A99AD] text-xs mt-0.5">Duplicates</div></div>
           </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB: CUSTOM SECTIONS ===== -->
+      <div id="tabSections" class="hidden space-y-6">
+        <div class="bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
+          <h3 class="text-white font-semibold text-base mb-5 flex items-center gap-2"><span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>Add Custom Section</h3>
+          <p class="text-[#8A99AD] text-xs mb-4 opacity-70">Custom sections appear on the home screen below the banner slider. Each section shows a horizontal scrollable row of channels.</p>
+          <form id="sectionForm" novalidate>
+            <input type="hidden" id="editSectionIdx" value="" />
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label for="sectionTitle" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">Section Title <span class="text-red-400">*</span></label>
+                <input type="text" id="sectionTitle" required placeholder="e.g. FIFA 2026 World Cup" class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm placeholder-gray-600 transition-bg focus:border-[#7F00FF]" />
+              </div>
+              <div>
+                <label for="sectionOrder" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">Display Order</label>
+                <input type="number" id="sectionOrder" value="1" min="1" max="20" class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm transition-bg focus:border-[#7F00FF]" />
+              </div>
+              <div>
+                <label for="sectionMaxItems" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">Max Channels</label>
+                <input type="number" id="sectionMaxItems" value="10" min="1" max="50" class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm transition-bg focus:border-[#7F00FF]" />
+              </div>
+            </div>
+            <div class="mb-4">
+              <label for="sectionChannelIds" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">Channel IDs (comma-separated)</label>
+              <textarea id="sectionChannelIds" rows="2" placeholder="channelId1, channelId2, channelId3, ..." class="w-full bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm placeholder-gray-600 transition-bg focus:border-[#7F00FF] font-mono"></textarea>
+              <p class="text-[#8A99AD] text-xs mt-1 opacity-70">To find the channel ID, open any channel in the channels tab and note the last segment of the Firestore document URL, or check browser console after clicking a channel.</p>
+            </div>
+            <div class="mb-4">
+              <label class="flex items-center gap-3">
+                <button type="button" id="sectionEnabledToggle" role="switch" aria-checked="true" class="relative w-10 h-5 rounded-full bg-gradient-to-r from-[#7F00FF] to-[#E100FF] transition-colors"><span id="sectionEnabledThumb" class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"></span></button>
+                <span class="text-sm text-gray-300 cursor-pointer select-none">Section <span class="text-[#00FFCC] font-semibold">Enabled</span></span>
+              </label>
+            </div>
+            <div class="flex flex-wrap gap-3">
+              <button type="submit" id="sectionSaveBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white font-semibold text-sm hover:brightness-110 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed">Save Section</button>
+              <button type="button" id="sectionResetBtn" class="px-6 py-2.5 rounded-xl bg-[#1A2035] text-gray-300 font-medium text-sm hover:brightness-125 transition-all">Clear</button>
+            </div>
+          </form>
+        </div>
+        <div class="bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
+          <h3 class="text-white font-semibold text-base mb-4 flex items-center gap-2"><span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>Published Sections</h3>
+          <div id="sectionsList" class="space-y-2"></div>
+          <p id="sectionsEmpty" class="text-[#8A99AD] text-sm text-center py-8 hidden">No custom sections yet. Create one above.</p>
         </div>
       </div>
 
@@ -515,7 +596,7 @@
         headerRight.innerHTML = `<span class="text-[#8A99AD] text-xs hidden sm:inline">${escapeHtml(user.email)}</span><button id="logoutBtn" class="px-3 py-1.5 rounded-lg bg-[#1A2035] text-gray-300 text-xs font-medium hover:brightness-125 transition-all">Sign Out</button>`;
         $('logoutBtn').addEventListener('click', () => auth.signOut());
         switchTab('channels');
-        loadCategories();
+        loadCategoriesAndCountries();
         loadChannelsPage(1);
         loadMonetizationForm();
         loadAppConfig();
@@ -567,15 +648,15 @@
     //  LOAD CATEGORIES (populate form + filter + bulk dropdowns)
     // ================================================================
 
-    async function loadCategories() {
+    async function loadCategoriesAndCountries() {
       try {
-        const snap = await db.collection('zyvi_channels')
-          .orderBy('category')
-          .get();
+        const snap = await db.collection('zyvi_channels').orderBy('category').get();
         const cats = new Set();
+        const countries = new Set();
         snap.forEach(doc => {
-          const c = doc.data().category;
-          if (c) cats.add(c);
+          const d = doc.data();
+          if (d.category) cats.add(d.category);
+          if (d.country) countries.add(d.country);
         });
         const sorted = Array.from(cats).sort();
         const filterSel = $('categoryFilter');
@@ -601,8 +682,28 @@
         });
 
         if (currentFilter) filterSel.value = currentFilter;
+
+        // Populate country filter
+        const countryFilter = $('countryFilter');
+        const currentCountry = countryFilter.value;
+        countryFilter.innerHTML = '<option value="">All Countries</option>';
+        Array.from(countries).sort().forEach(c => {
+          countryFilter.innerHTML += `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`;
+        });
+        if (currentCountry) countryFilter.value = currentCountry;
+
+        // Populate form country dropdown
+        const formCountry = $('channelCountry');
+        const formCurrent = formCountry.value;
+        formCountry.innerHTML = '<option value="">— Any / Global —</option>';
+        Array.from(countries).sort().forEach(c => {
+          if (!Array.from(formCountry.options).some(o => o.value === c)) {
+            formCountry.innerHTML += `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`;
+          }
+        });
+        if (formCurrent) formCountry.value = formCurrent;
       } catch (err) {
-        console.error('Failed to load categories:', err);
+        console.error('Failed to load categories/countries:', err);
       }
     }
 
@@ -752,7 +853,8 @@
 
         const info = document.createElement('div');
         info.className = 'flex-1 min-w-0';
-        info.innerHTML = `<div class="text-white text-sm font-semibold truncate">${escapeHtml(ch.name)}</div><div class="text-[#8A99AD] text-xs mt-0.5">${escapeHtml(ch.category || 'Uncategorized')} &middot; ${sLabel}</div>`;
+        const countryTag = ch.country ? `<span class="text-[#7F00FF]/70">${escapeHtml(ch.country)}</span> &middot; ` : '';
+        info.innerHTML = `<div class="text-white text-sm font-semibold truncate">${escapeHtml(ch.name)}</div><div class="text-[#8A99AD] text-xs mt-0.5">${countryTag}${escapeHtml(ch.category || 'Uncategorized')} &middot; ${sLabel}</div>`;
 
         const badge = ch.isLive
           ? '<span class="text-[10px] font-bold text-[#00FFCC] bg-[#00FFCC]/10 px-2 py-0.5 rounded shrink-0">LIVE</span>'
@@ -875,7 +977,7 @@
         renderChannels(currentRenderedChannels);
         updateBulkToolbar();
         loadChannelsPage(currentPage);
-        loadCategories();
+        loadCategoriesAndCountries();
       } catch (err) { showToast(err.message, 'error'); }
       finally { bulkApplyBtn.disabled = false; bulkApplyBtn.textContent = 'Apply'; }
     });
@@ -957,6 +1059,8 @@
       channelName.value = ch.name || '';
       channelCat.value = ch.category || 'Live TV';
       channelLogo.value = ch.logoUrl || '';
+      const countryEl = $('channelCountry');
+      countryEl.value = ch.country || '';
       isLive = !!ch.isLive;
       liveToggle.setAttribute('aria-checked', isLive);
       liveToggleTh.style.transform = isLive ? 'translateX(0)' : 'translateX(20px)';
@@ -978,7 +1082,7 @@
       if (!valid) return;
       submitBtn.disabled = true;
       submitBtn.textContent = editDocId.value ? 'Updating\u2026' : 'Publishing\u2026';
-      const data = { name, category: channelCat.value, logoUrl: channelLogo.value.trim() || '', sources, isLive, updatedAt: new Date().toISOString() };
+      const data = { name, category: channelCat.value, logoUrl: channelLogo.value.trim() || '', sources, isLive, country: $('channelCountry').value, updatedAt: new Date().toISOString() };
       try {
         if (editDocId.value) { await db.collection('zyvi_channels').doc(editDocId.value).update(data); showToast('Channel updated'); }
         else { await db.collection('zyvi_channels').add(data); showToast('Channel published'); }
@@ -999,7 +1103,7 @@
     }
 
     async function duplicateChannel(ch) {
-      try { await db.collection('zyvi_channels').add({ name: ch.name + ' (Copy)', category: ch.category || 'Live TV', logoUrl: ch.logoUrl || '', sources: ch.sources || [], isLive: false, updatedAt: new Date().toISOString() }); showToast('Channel duplicated'); loadChannelsPage(1); } catch (err) { showToast(err.message, 'error'); }
+      try { await db.collection('zyvi_channels').add({ name: ch.name + ' (Copy)', category: ch.category || 'Live TV', logoUrl: ch.logoUrl || '', sources: ch.sources || [], isLive: false, country: ch.country || '', updatedAt: new Date().toISOString() }); showToast('Channel duplicated'); loadChannelsPage(1); } catch (err) { showToast(err.message, 'error'); }
     }
 
     // ================================================================
@@ -1014,10 +1118,13 @@
     const tabM3UBtn = $('tabM3UBtn');
     const tabMonBtn = $('tabMonetizationBtn');
     const tabAppConfigBtn = $('tabAppConfigBtn');
+    const tabSections = $('tabSections');
+    const tabSecBtn = $('tabSectionsBtn');
 
     function switchTab(tab) {
       tabChannels.classList.toggle('hidden', tab !== 'channels');
       tabM3U.classList.toggle('hidden', tab !== 'm3u');
+      tabSections.classList.toggle('hidden', tab !== 'sections');
       tabMonetization.classList.toggle('hidden', tab !== 'monetization');
       tabAppConfig.classList.toggle('hidden', tab !== 'appconfig');
 
@@ -1026,15 +1133,18 @@
       const base = 'tab-btn flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all';
       tabChBtn.className = `${base} ${tab === 'channels' ? active : inactive}`;
       tabM3UBtn.className = `${base} ${tab === 'm3u' ? active : inactive}`;
+      tabSecBtn.className = `${base} ${tab === 'sections' ? active : inactive}`;
       tabMonBtn.className = `${base} ${tab === 'monetization' ? active : inactive}`;
       tabAppConfigBtn.className = `${base} ${tab === 'appconfig' ? active : inactive}`;
 
       if (tab === 'monetization') loadMonetizationForm();
       if (tab === 'appconfig') loadAppConfig();
+      if (tab === 'sections') loadCustomSections();
     }
 
     tabChBtn.addEventListener('click', () => switchTab('channels'));
     tabM3UBtn.addEventListener('click', () => switchTab('m3u'));
+    tabSecBtn.addEventListener('click', () => switchTab('sections'));
     tabMonBtn.addEventListener('click', () => switchTab('monetization'));
     tabAppConfigBtn.addEventListener('click', () => switchTab('appconfig'));
 
@@ -1207,7 +1317,7 @@
         autoCatStatus.textContent = `${updated} of ${total} channels recategorized`;
         showToast(`${updated} channels categorized`);
         loadChannelsPage(1);
-        loadCategories();
+        loadCategoriesAndCountries();
       } catch (err) { showToast(err.message, 'error'); autoCatStatus.textContent = 'Error'; }
       finally { autoCategorizeAllBtn.disabled = false; autoCategorizeAllBtn.textContent = '\u{1F504} Auto-Categorize All Channels'; }
     });
@@ -1545,12 +1655,170 @@
         showToast(`${total} channels wiped successfully`);
         bulkDeleteStatus.textContent = `${total} channels deleted`;
         loadChannelsPage(1);
-        loadCategories();
+        loadCategoriesAndCountries();
       } catch (err) {
         showToast(err.message, 'error');
         bulkDeleteStatus.textContent = 'Error: ' + err.message;
       } finally {
         bulkDeleteBtn.disabled = false;
+      }
+    });
+
+    // ================================================================
+    //  CUSTOM SECTIONS CRUD
+    // ================================================================
+
+    const sectionForm = $('sectionForm');
+    const editSectionIdx = $('editSectionIdx');
+    const sectionTitle = $('sectionTitle');
+    const sectionOrder = $('sectionOrder');
+    const sectionMaxItems = $('sectionMaxItems');
+    const sectionChannelIds = $('sectionChannelIds');
+    const sectionEnabledToggle = $('sectionEnabledToggle');
+    const sectionEnabledThumb = $('sectionEnabledThumb');
+    const sectionSaveBtn = $('sectionSaveBtn');
+    const sectionResetBtn = $('sectionResetBtn');
+    const sectionsList = $('sectionsList');
+    const sectionsEmpty = $('sectionsEmpty');
+    let sectionEnabled = true;
+
+    const SECTIONS_DOC = 'custom_sections';
+
+    sectionEnabledToggle.addEventListener('click', () => {
+      sectionEnabled = !sectionEnabled;
+      sectionEnabledToggle.setAttribute('aria-checked', sectionEnabled);
+      sectionEnabledThumb.style.transform = sectionEnabled ? 'translateX(20px)' : 'translateX(0)';
+      sectionEnabledToggle.style.background = sectionEnabled ? 'linear-gradient(135deg, #7F00FF, #E100FF)' : '#1A2035';
+      sectionEnabledThumb.style.background = sectionEnabled ? '#fff' : '#9CA3AF';
+    });
+
+    function resetSectionForm() {
+      sectionForm.reset();
+      editSectionIdx.value = '';
+      sectionTitle.value = '';
+      sectionOrder.value = '1';
+      sectionMaxItems.value = '10';
+      sectionChannelIds.value = '';
+      sectionEnabled = true;
+      sectionEnabledToggle.setAttribute('aria-checked', 'true');
+      sectionEnabledThumb.style.transform = 'translateX(20px)';
+      sectionEnabledToggle.style.background = 'linear-gradient(135deg, #7F00FF, #E100FF)';
+      sectionEnabledThumb.style.background = '#fff';
+      sectionSaveBtn.textContent = 'Save Section';
+    }
+
+    sectionResetBtn.addEventListener('click', resetSectionForm);
+
+    async function loadCustomSections() {
+      try {
+        const snap = await db.collection('app_settings').doc(SECTIONS_DOC).get();
+        const data = snap.exists ? snap.data() : {};
+        const sections = data.sections || [];
+        renderSections(sections);
+      } catch (err) {
+        console.error('Failed to load sections:', err);
+      }
+    }
+
+    function renderSections(sections) {
+      sectionsList.innerHTML = '';
+      if (sections.length === 0) {
+        sectionsEmpty.classList.remove('hidden');
+        return;
+      }
+      sectionsEmpty.classList.add('hidden');
+      sections.forEach((sec, idx) => {
+        const card = document.createElement('div');
+        card.className = 'flex items-center justify-between gap-3 p-3.5 bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl';
+        const info = document.createElement('div');
+        info.className = 'flex-1 min-w-0';
+        const enabledBadge = sec.enabled !== false
+          ? '<span class="text-[10px] text-[#00FFCC] bg-[#00FFCC]/10 px-2 py-0.5 rounded ml-2">Active</span>'
+          : '<span class="text-[10px] text-gray-500 bg-gray-500/10 px-2 py-0.5 rounded ml-2">Disabled</span>';
+        info.innerHTML = `
+          <div class="text-white text-sm font-semibold truncate">${escapeHtml(sec.title)} ${enabledBadge}</div>
+          <div class="text-[#8A99AD] text-xs mt-0.5">Order: ${sec.order || 0} &middot; Max: ${sec.maxItems || 10} &middot; ${(sec.channelIds || []).length} channels</div>
+        `;
+        const actions = document.createElement('div');
+        actions.className = 'flex gap-1 shrink-0';
+        actions.innerHTML = `
+          <button class="sec-edit px-2.5 py-1.5 rounded-lg bg-[#1A2035] text-gray-300 text-xs hover:brightness-125" title="Edit">&#9998;</button>
+          <button class="sec-del px-2.5 py-1.5 rounded-lg bg-red-900/40 text-red-400 text-xs hover:brightness-125" title="Delete">&#128465;</button>
+        `;
+        card.append(info, actions);
+        sectionsList.appendChild(card);
+
+        actions.querySelector('.sec-edit').addEventListener('click', () => populateSectionForm(sec, idx));
+        actions.querySelector('.sec-del').addEventListener('click', () => deleteSection(idx));
+      });
+    }
+
+    function populateSectionForm(sec, idx) {
+      editSectionIdx.value = idx;
+      sectionTitle.value = sec.title || '';
+      sectionOrder.value = String(sec.order || 1);
+      sectionMaxItems.value = String(sec.maxItems || 10);
+      sectionChannelIds.value = (sec.channelIds || []).join(', ');
+      sectionEnabled = sec.enabled !== false;
+      sectionEnabledToggle.setAttribute('aria-checked', sectionEnabled);
+      sectionEnabledThumb.style.transform = sectionEnabled ? 'translateX(20px)' : 'translateX(0)';
+      sectionEnabledToggle.style.background = sectionEnabled ? 'linear-gradient(135deg, #7F00FF, #E100FF)' : '#1A2035';
+      sectionEnabledThumb.style.background = sectionEnabled ? '#fff' : '#9CA3AF';
+      sectionSaveBtn.textContent = 'Update Section';
+      sectionForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    async function saveSectionsToFirestore(sections) {
+      await db.collection('app_settings').doc(SECTIONS_DOC).set({ sections }, { merge: true });
+    }
+
+    async function deleteSection(idx) {
+      const ok = await showConfirm('Delete this custom section from the home screen?');
+      if (!ok) return;
+      try {
+        const snap = await db.collection('app_settings').doc(SECTIONS_DOC).get();
+        const sections = (snap.exists ? snap.data().sections : []) || [];
+        sections.splice(idx, 1);
+        await saveSectionsToFirestore(sections);
+        renderSections(sections);
+        showToast('Section deleted');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    sectionForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = sectionTitle.value.trim();
+      if (!title) { showToast('Section title is required', 'error'); return; }
+      const order = parseInt(sectionOrder.value) || 1;
+      const maxItems = parseInt(sectionMaxItems.value) || 10;
+      const channelIds = sectionChannelIds.value.split(',').map(s => s.trim()).filter(Boolean);
+
+      sectionSaveBtn.disabled = true;
+      sectionSaveBtn.textContent = 'Saving\u2026';
+      try {
+        const snap = await db.collection('app_settings').doc(SECTIONS_DOC).get();
+        const sections = (snap.exists ? snap.data().sections : []) || [];
+        const section = { title, order, maxItems, channelIds, enabled: sectionEnabled };
+
+        const editIdx = editSectionIdx.value;
+        if (editIdx !== '' && editIdx >= 0 && editIdx < sections.length) {
+          sections[editIdx] = section;
+        } else {
+          sections.push(section);
+        }
+
+        sections.sort((a, b) => (a.order || 0) - (b.order || 0));
+        await saveSectionsToFirestore(sections);
+        renderSections(sections);
+        resetSectionForm();
+        showToast(editIdx !== '' ? 'Section updated' : 'Section created');
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        sectionSaveBtn.disabled = false;
+        sectionSaveBtn.textContent = 'Save Section';
       }
     });
   </script>

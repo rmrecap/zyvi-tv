@@ -24,13 +24,14 @@ class ChannelModelAdapter extends TypeAdapter<ChannelModel> {
       sources: (fields[4] as List).cast<StreamSource>(),
       isLive: fields[5] as bool,
       updatedAt: fields[6] as DateTime,
+      country: fields[7] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, ChannelModel obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class ChannelModelAdapter extends TypeAdapter<ChannelModel> {
       ..writeByte(5)
       ..write(obj.isLive)
       ..writeByte(6)
-      ..write(obj.updatedAt);
+      ..write(obj.updatedAt)
+      ..writeByte(7)
+      ..write(obj.country);
   }
 
   @override

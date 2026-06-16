@@ -38,7 +38,7 @@ class CurvedBottomNav extends StatelessWidget {
               ],
             ),
             child: Row(
-              children: List.generate(4, (index) {
+              children: List.generate(5, (index) {
                 final isSelected = currentIndex == index;
                 return Expanded(
                   child: GestureDetector(
@@ -111,6 +111,7 @@ const List<IconData> _icons = [
   Icons.grid_view_rounded,
   Icons.live_tv_rounded,
   Icons.trending_up_rounded,
+  Icons.public_rounded,
 ];
 
 const List<String> _labels = [
@@ -118,4 +119,5 @@ const List<String> _labels = [
   'Categories',
   'Live',
   'Trending',
+  'Country',
 ];
