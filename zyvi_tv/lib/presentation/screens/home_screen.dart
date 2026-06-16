@@ -201,7 +201,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             .whereType<ChannelModel>()
             .take(section.maxItems)
             .toList();
-        if (sectionChannels.isEmpty) return const SizedBox.shrink();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -216,22 +215,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
             ),
-            SizedBox(
-              height: 110,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: sectionChannels.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 4),
-                itemBuilder: (context, index) {
-                  final channel = sectionChannels[index];
-                  return CompactChannelCard(
-                    channel: channel,
-                    onTap: () => _onChannelTap(context, ref, channel),
-                  );
-                },
+            if (sectionChannels.isNotEmpty)
+              SizedBox(
+                height: 110,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: sectionChannels.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 4),
+                  itemBuilder: (context, index) {
+                    final channel = sectionChannels[index];
+                    return CompactChannelCard(
+                      channel: channel,
+                      onTap: () => _onChannelTap(context, ref, channel),
+                    );
+                  },
+                ),
+              )
+            else
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'No matching channels found. Add channel IDs in the admin panel.',
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                ),
               ),
-            ),
           ],
         );
       }).toList(),
