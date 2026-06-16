@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../main.dart';
@@ -5,6 +6,19 @@ import '../../services/hive_cache_service.dart';
 import '../models/channel_model.dart';
 
 const int _pageSize = 20;
+const int _batchYieldInterval = 200;
+
+Future<List<ChannelModel>> _parseDocsBatched(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) async {
+  final channels = <ChannelModel>[];
+  for (int i = 0; i < docs.length; i++) {
+    channels.add(ChannelModel.fromMap(docs[i].data(), docs[i].id));
+    if (i > 0 && i % _batchYieldInterval == 0) {
+      await Future.delayed(Duration.zero);
+    }
+  }
+  return channels;
+}
 
 final liveChannelsProvider =
     StreamProvider.autoDispose<List<ChannelModel>>((ref) {
@@ -15,10 +29,11 @@ final liveChannelsProvider =
         .where('isLive', isEqualTo: true)
         .orderBy('updatedAt', descending: true)
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return ChannelModel.fromMap(doc.data(), doc.id);
-      }).toList();
+        .asyncMap((snapshot) async {
+      final docs = snapshot.docs
+          .map((d) => d as QueryDocumentSnapshot<Map<String, dynamic>>)
+          .toList();
+      return _parseDocsBatched(docs);
     }).handleError((_) => <ChannelModel>[]);
   } catch (_) {
     return const Stream.empty();
@@ -46,9 +61,7 @@ class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
         _backgroundSync(hive);
         return sorted;
       }
-    } catch (_) {
-      // Hive read failed — fall through to network
-    }
+    } catch (_) {}
 
     try {
       final channels = await _fetchAndCache(hive)
@@ -63,8 +76,6 @@ class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
     }
   }
 
-  /// Returns true when [channelName]/[category] match a high-priority
-  /// World Cup, Sports, or tournament keyword.
   static bool _isPriorityChannel(String name, String category) {
     final text = '${category.toLowerCase()} ${name.toLowerCase()}';
     return const [
@@ -76,9 +87,6 @@ class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
     ].any((kw) => text.contains(kw));
   }
 
-  /// Sorts [channels] so that the first 6 slots (0–5) are filled with
-  /// priority (World Cup / Sports) streams. Remaining channels keep their
-  /// relative order below.
   static List<ChannelModel> _sortPriorityFirst(List<ChannelModel> channels) {
     if (channels.length <= 6) return channels;
     try {
@@ -111,9 +119,7 @@ class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
 
       final channels = await _fetchAndCache(hive);
       state = AsyncData(_sortPriorityFirst(channels));
-    } catch (_) {
-      // Background sync failed — cached data remains
-    }
+    } catch (_) {}
   }
 
   Future<List<ChannelModel>> _fetchAndCache(HiveCacheService hive) async {
@@ -124,9 +130,11 @@ class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
         .get()
         .timeout(const Duration(seconds: 5));
 
-    final channels = snapshot.docs
-        .map((doc) => ChannelModel.fromMap(doc.data(), doc.id))
+    final docs = snapshot.docs
+        .map((d) => d as QueryDocumentSnapshot<Map<String, dynamic>>)
         .toList();
+
+    final channels = await _parseDocsBatched(docs);
 
     await hive.cacheChannels(channels);
 
@@ -157,6 +165,14 @@ class ChannelsNotifier extends AsyncNotifier<List<ChannelModel>> {
         final channels = await _fetchAndCache(hive);
         state = AsyncData(_sortPriorityFirst(channels));
       } catch (err, st) {
+        final hive = ref.read(hiveCacheServiceProvider);
+        try {
+          final fallback = hive.getCachedChannels();
+          if (fallback.isNotEmpty) {
+            state = AsyncData(_sortPriorityFirst(fallback));
+            return;
+          }
+        } catch (_) {}
         state = AsyncError(err, st);
       }
     }
@@ -214,9 +230,10 @@ class PaginatedChannelsNotifier
           .limit(_pageSize);
 
       final snapshot = await query.get();
-      final channels = snapshot.docs.map((doc) {
-        return ChannelModel.fromMap(doc.data(), doc.id);
-      }).toList();
+      final docs = snapshot.docs
+          .map((d) => d as QueryDocumentSnapshot<Map<String, dynamic>>)
+          .toList();
+      final channels = await _parseDocsBatched(docs);
 
       _lastDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
       _hasMore = snapshot.docs.length >= _pageSize;
@@ -249,9 +266,10 @@ class PaginatedChannelsNotifier
       }
 
       final snapshot = await query.get();
-      final newChannels = snapshot.docs.map((doc) {
-        return ChannelModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
-      }).toList();
+      final docs = snapshot.docs
+          .map((d) => d as QueryDocumentSnapshot<Map<String, dynamic>>)
+          .toList();
+      final newChannels = await _parseDocsBatched(docs);
 
       _lastDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
       _hasMore = snapshot.docs.length >= _pageSize;

@@ -252,7 +252,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildChannelList(List<ChannelModel> channels, bool isLoadingMore) {
     return ListView.builder(
       shrinkWrap: true,
-      cacheExtent: 500,
+      cacheExtent: 400,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: channels.length + (isLoadingMore ? 1 : 0),
       padding: const EdgeInsets.only(top: 4, bottom: 24),

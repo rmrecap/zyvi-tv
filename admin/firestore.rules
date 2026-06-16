@@ -1,45 +1,17 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isAdmin() {
-      return request.auth != null
-        && (request.auth.token.email == 'rmrecap@gmail.com'
-            || request.auth.token.firebase.sign_in_provider == 'google.com');
-    }
-
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
     match /app_settings/{document} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if request.auth != null && (request.auth.token.email == 'rmrecap@gmail.com' || request.auth.token.firebase.sign_in_provider == 'google.com');
     }
-
     match /zyvi_config/{document} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if request.auth != null && (request.auth.token.email == 'rmrecap@gmail.com' || request.auth.token.firebase.sign_in_provider == 'google.com');
     }
-
     match /zyvi_channels/{document} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAdmin();
-      allow list: if isAuthenticated();
-    }
-
-    match /secure_stream_url/{doc} {
-      allow read, write: if false;
-    }
-
-    match /user_progress/{userId} {
-      allow read, write: if request.auth != null
-        && request.auth.uid == userId;
-    }
-
-    match /{document=**} {
-      allow read, write: if false;
+      allow read: if true;
+      allow write: if request.auth != null && (request.auth.token.email == 'rmrecap@gmail.com' || request.auth.token.firebase.sign_in_provider == 'google.com');
     }
   }
 }
