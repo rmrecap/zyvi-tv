@@ -57,9 +57,11 @@ class ChannelModel {
         (map['sources'] ?? []).map((x) => StreamSource.fromMap(x)),
       ),
       isLive: map['isLive'] ?? false,
-      updatedAt: DateTime.parse(
-        map['updatedAt'] ?? DateTime.now().toIso8601String(),
-      ),
+      updatedAt: map['updatedAt'] is String
+          ? DateTime.parse(map['updatedAt'] as String)
+          : map['updatedAt'] is DateTime
+              ? map['updatedAt'] as DateTime
+              : DateTime.now(),
     );
   }
 

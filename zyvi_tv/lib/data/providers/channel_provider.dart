@@ -16,11 +16,24 @@ List<Map<String, dynamic>> _parseInIsolate(List<Map<String, dynamic>> raw) {
   }).toList();
 }
 
+DateTime? _tryParseTimestamp(dynamic value) {
+  if (value == null) return null;
+  if (value is DateTime) return value;
+  if (value is String) return DateTime.tryParse(value);
+  try {
+    return DateTime.parse('$value');
+  } catch (_) {
+    return null;
+  }
+}
+
 Future<List<ChannelModel>> _parseDocsOffMain(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) async {
   final raw = docs.map((d) {
     final m = Map<String, dynamic>.from(d.data());
     m['__id__'] = d.id;
+    final updatedAt = _tryParseTimestamp(m['updatedAt']);
+    m['updatedAt'] = (updatedAt ?? DateTime.now()).toIso8601String();
     return m;
   }).toList();
 
