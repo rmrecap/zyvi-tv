@@ -81,7 +81,9 @@ class TrendingRow extends ConsumerWidget {
 
   void _onChannelTap(BuildContext context, WidgetRef ref, ChannelModel channel) {
     if (channel.sources.isEmpty) return;
-    final source = channel.sources.first;
-    Navigator.pushNamed(context, '/player', arguments: source);
+    Navigator.pushNamed(context, '/player', arguments: {
+      'channels': [channel],
+      'index': 0,
+    });
   }
 }

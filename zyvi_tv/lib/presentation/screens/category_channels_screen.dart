@@ -74,12 +74,13 @@ class CategoryChannelsScreen extends ConsumerWidget {
               channel: channel,
               onTap: () {
                 if (channel.sources.isEmpty) return;
-                final source = channel.sources.first;
                 final adManager = ref.read(adManagerProvider);
                 adManager.showInterstitialIfAvailable(
                   onDismissed: () {
-                    Navigator.pushNamed(context, '/player',
-                        arguments: source);
+                    Navigator.pushNamed(context, '/player', arguments: {
+                      'channels': channels,
+                      'index': index,
+                    });
                   },
                 );
               },

@@ -139,7 +139,10 @@ class ChannelDetailsBottomSheet extends StatelessWidget {
         if (onPlayStream != null) {
           onPlayStream!(source);
         } else {
-          Navigator.pushNamed(context, '/player', arguments: source);
+          Navigator.pushNamed(context, '/player', arguments: {
+            'channels': [channel],
+            'index': 0,
+          });
         }
       },
       child: Container(

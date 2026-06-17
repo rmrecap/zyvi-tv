@@ -10,6 +10,7 @@ import '../../data/providers/channel_provider.dart';
 import '../../data/providers/home_layout_provider.dart';
 import '../sections/banner_slider.dart';
 import '../sections/live_now_row.dart';
+import '../sections/live_scores_widget.dart';
 import '../sections/news_row.dart';
 import '../sections/trending_row.dart';
 import '../sections/categories_row.dart';
@@ -435,130 +436,56 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildLiveTab() {
     final channelsAsync = ref.watch(liveChannelsProvider);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(24, 20, 24, 4),
-          child: Text(
-            'Live Now',
-            style: TextStyle(
-              color: AppTheme.textPrimary,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24),
-          child: Text(
-            'Currently streaming channels',
-            style: TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 13,
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Expanded(
-          child: channelsAsync.when(
-            data: (channels) {
-              if (channels.isEmpty) {
-                return const Center(
-                  child: Text(
-                    'No live channels right now',
-                    style: TextStyle(
-                        color: AppTheme.textSecondary, fontSize: 16),
-                  ),
-                );
-              }
-              return CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 110,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount: channels.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 4),
-                        itemBuilder: (context, index) {
-                          final channel = channels[index];
-                          return CompactChannelCard(
-                            channel: channel,
-                            onTap: () =>
-                                _onChannelTap(context, ref, channel),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(24, 20, 24, 8),
-                      child: Text(
-                        'All Live Channels',
-                        style: TextStyle(
-                          color: AppTheme.textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final channel = channels[index];
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 4),
-                          child: ChannelCard(
-                            channel: channel,
-                            onTap: () =>
-                                _onChannelTap(context, ref, channel),
-                          ),
-                        );
-                      },
-                      childCount: channels.length,
-                    ),
-                  ),
-                ],
-              );
-            },
-            loading: () => const ShimmerLoader(),
-            error: (err, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.cloud_off,
-                        color: AppTheme.textSecondary, size: 48),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Failed to load live channels',
-                      style: TextStyle(color: AppTheme.textSecondary),
-                    ),
-                    const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      onPressed: () => ref.invalidate(allChannelsProvider),
-                      icon: const Icon(Icons.refresh, size: 18),
-                      label: const Text('Retry'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.accentPurple,
-                        side:
-                            const BorderSide(color: AppTheme.accentPurple),
-                      ),
-                    ),
-                  ],
-                ),
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const LiveScoresWidget(),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 20, 24, 4),
+            child: Text(
+              'Live Now',
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
-        ),
-      ],
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              'Currently streaming channels',
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          channelsAsync.when(
+            data: (channels) {
+              if (channels.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Text(
+                      'No live channels right now',
+                      style: TextStyle(
+                          color: AppTheme.textSecondary, fontSize: 16),
+                    ),
+                  ),
+                );
+              }
+              return _buildChannelGrid(channels, false);
+            },
+            loading: () => const ShimmerLoader(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
+          const SizedBox(height: 80),
+        ],
+      ),
     );
   }
 
@@ -716,8 +643,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _onChannelTap(BuildContext context, WidgetRef ref, ChannelModel channel) {
     if (channel.sources.isEmpty) return;
-    final source = channel.sources.first;
-    Navigator.pushNamed(context, '/player', arguments: source);
+    Navigator.pushNamed(context, '/player', arguments: {
+      'channels': [channel],
+      'index': 0,
+    });
     Future.microtask(() {
       try {
         ref.read(adManagerProvider).showInterstitialIfAvailable();

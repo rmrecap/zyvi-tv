@@ -83,9 +83,14 @@ class ZyviTVApp extends StatelessWidget {
               builder: (_) => const HomeScreen(),
             );
           case '/player':
-            final source = settings.arguments as StreamSource;
+            final args = settings.arguments as Map;
+            final channels = args['channels'] as List<ChannelModel>;
+            final index = args['index'] as int? ?? 0;
             return MaterialPageRoute(
-              builder: (_) => VideoPlayerView(source: source),
+              builder: (_) => VideoPlayerView(
+                channels: channels,
+                initialIndex: index,
+              ),
             );
           case '/category-detail':
             final category = settings.arguments as String;
