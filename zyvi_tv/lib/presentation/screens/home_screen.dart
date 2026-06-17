@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/constants/app_constants.dart';
@@ -17,6 +16,8 @@ import '../sections/categories_row.dart';
 import '../widgets/ad_banner_widget.dart';
 import '../widgets/channel_card.dart';
 import '../widgets/compact_channel_card.dart';
+import '../widgets/grid_channel_card.dart';
+import '../widgets/grid_country_card.dart';
 import '../widgets/curved_bottom_nav.dart';
 import '../widgets/filter_bar.dart';
 import '../widgets/shimmer_loader.dart';
@@ -161,6 +162,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           loading: () => const SliverToBoxAdapter(child: ShimmerLoader()),
           error: (_, __) => const SliverToBoxAdapter(child: ShimmerLoader()),
         ),
+        SliverToBoxAdapter(child: _buildCountryGrid()),
         const SliverToBoxAdapter(child: AdBannerWidget()),
       ],
     );
@@ -265,11 +267,64 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
-          _buildChannelList(channels, false),
+          _buildChannelGrid(channels, false),
         ],
       ),
       loading: () => const SizedBox(height: 100, child: ShimmerLoader()),
       error: (err, _) => _buildRetryWidget(),
+    );
+  }
+
+  Widget _buildCountryGrid() {
+    final countriesAsync = ref.watch(countriesProvider);
+    return countriesAsync.when(
+      data: (countries) {
+        if (countries.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(left: 8, bottom: 8),
+                child: Text(
+                  'Countries',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 0.85,
+                ),
+                itemCount: countries.length,
+                itemBuilder: (context, index) {
+                  final entry = countries[index];
+                  return GridCountryCard(
+                    country: entry.name,
+                    channelCount: entry.channelCount,
+                    onTap: () => Navigator.pushNamed(
+                      context,
+                      '/country-detail',
+                      arguments: entry.name,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox(height: 100, child: ShimmerLoader()),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 
@@ -304,7 +359,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
             ),
-            _buildChannelList(state.channels, state.isLoadingMore),
+            _buildChannelGrid(state.channels, state.isLoadingMore),
           ],
         );
       },
@@ -313,32 +368,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildChannelList(List<ChannelModel> channels, bool isLoadingMore) {
-    return ListView.builder(
+  Widget _buildChannelGrid(List<ChannelModel> channels, bool isLoadingMore) {
+    return GridView.builder(
       shrinkWrap: true,
-      scrollCacheExtent: const ScrollCacheExtent.pixels(300),
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: channels.length + (isLoadingMore ? 1 : 0),
-      padding: const EdgeInsets.only(top: 4, bottom: 24),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       addAutomaticKeepAlives: false,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 0.75,
+      ),
+      itemCount: channels.length + (isLoadingMore ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == channels.length) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppTheme.accentPurple,
-                ),
+          return const Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppTheme.accentPurple,
               ),
             ),
           );
         }
         final channel = channels[index];
-        return ChannelCard(
+        return GridChannelCard(
           channel: channel,
           onTap: () => _onChannelTap(context, ref, channel),
         );

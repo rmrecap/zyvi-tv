@@ -289,7 +289,7 @@
           </div>
           <div id="previewTableWrap" class="overflow-x-auto max-h-80 overflow-y-auto rounded-xl border border-[#1F2C4C]">
             <table class="w-full text-sm">
-              <thead class="sticky top-0 bg-[#0A0E1A]"><tr class="text-[#8A99AD] text-xs uppercase tracking-wider"><th class="text-left px-3 py-2.5 font-semibold">#</th><th class="text-left px-3 py-2.5 font-semibold">Channel</th><th class="text-left px-3 py-2.5 font-semibold">Category</th><th class="text-left px-3 py-2.5 font-semibold">Stream URL</th><th class="text-left px-3 py-2.5 font-semibold">Logo</th></tr></thead>
+              <thead class="sticky top-0 bg-[#0A0E1A]"><tr class="text-[#8A99AD] text-xs uppercase tracking-wider"><th class="text-left px-3 py-2.5 font-semibold">#</th><th class="text-left px-3 py-2.5 font-semibold">Channel</th><th class="text-left px-3 py-2.5 font-semibold">Category</th><th class="text-left px-3 py-2.5 font-semibold">Country</th><th class="text-left px-3 py-2.5 font-semibold">Stream URL</th><th class="text-left px-3 py-2.5 font-semibold">Logo</th></tr></thead>
               <tbody id="previewBody"></tbody>
             </table>
           </div>
@@ -305,6 +305,10 @@
             <div class="bg-emerald-900/20 border border-emerald-700/30 rounded-xl p-4 text-center"><div id="activeCount" class="text-2xl font-bold text-[#00FFCC]">0</div><div class="text-[#8A99AD] text-xs mt-1">Active Saved</div></div>
             <div class="bg-red-900/20 border border-red-700/30 rounded-xl p-4 text-center"><div id="deadCount" class="text-2xl font-bold text-red-400">0</div><div class="text-[#8A99AD] text-xs mt-1">Dead Links</div></div>
           </div>
+          <div class="mb-4">
+            <label for="m3uCountry" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">Assign Country (optional)</label>
+            <input type="text" id="m3uCountry" placeholder="e.g. Bangladesh, India, USA, UK ..." class="w-full max-w-xs bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm placeholder-gray-600 transition-bg focus:border-[#7F00FF]" />
+          </div>
           <div class="flex flex-wrap gap-3">
             <button type="button" id="validateImportBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white font-semibold text-sm hover:brightness-110 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed">&#x2705; Validate &amp; Import</button>
             <button type="button" id="m3uResetBtn" class="px-6 py-2.5 rounded-xl bg-[#1A2035] text-gray-300 font-medium text-sm hover:brightness-125 transition-all">Clear</button>
@@ -313,6 +317,10 @@
         <div class="bg-[#111625] border border-[#1F2C4C] rounded-2xl p-6">
           <h3 class="text-white font-semibold text-base mb-5 flex items-center gap-2"><span class="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#7F00FF] to-[#E100FF]"></span>Global IPTV Library Sync</h3>
           <p class="text-[#8A99AD] text-xs mb-4 opacity-70">Fetches public IPTV channel index from <code class="text-[#7F00FF]">iptv-org.github.io</code>.</p>
+          <div class="mb-4">
+            <label for="globalCountry" class="block text-[#8A99AD] text-xs font-semibold uppercase tracking-wider mb-1.5">Assign Country (optional)</label>
+            <input type="text" id="globalCountry" placeholder="e.g. Bangladesh, India, USA, UK ..." class="w-full max-w-xs bg-[#0A0E1A] border border-[#1F2C4C] rounded-xl px-3.5 py-2.5 text-gray-100 text-sm placeholder-gray-600 transition-bg focus:border-[#7F00FF]" />
+          </div>
           <div class="flex flex-wrap items-center gap-3 mb-4">
             <button type="button" id="syncGlobalBtn" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#7F00FF] to-[#E100FF] text-white font-semibold text-sm hover:brightness-110 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed">&#x1F310; Sync Global IPTV</button>
             <span id="syncGlobalStatus" class="text-[#8A99AD] text-xs"></span>
@@ -1279,10 +1287,12 @@
         const tr = document.createElement('tr');
         const shortUrl = ch.url.length > 50 ? ch.url.slice(0, 47) + '...' : ch.url;
         const logoHtml = `<img src="${escapeHtml(resolveLogoUrl(ch))}" alt="" class="w-7 h-7 rounded object-cover" onerror="this.style.display='none'" />`;
+        const m3uCountry = escapeHtml($('m3uCountry').value.trim() || '—');
         tr.innerHTML =
           `<td class="text-[#8A99AD] text-xs">${i + 1}</td>` +
           `<td class="text-white text-xs font-medium">${escapeHtml(ch.name)}</td>` +
           `<td><span class="text-[10px] font-medium px-2 py-0.5 rounded-full ${ch.category === 'Movies & Series' ? 'bg-purple-900/40 text-purple-300' : ch.category === 'Sports' ? 'bg-emerald-900/40 text-emerald-300' : 'bg-[#1A2035] text-[#8A99AD]'}">${escapeHtml(ch.category)}</span></td>` +
+          `<td class="text-[#7F00FF] text-xs max-w-[100px] truncate">${m3uCountry}</td>` +
           `<td class="text-[#8A99AD] text-xs font-mono max-w-[200px] truncate" title="${escapeHtml(ch.url)}">${escapeHtml(shortUrl)}</td>` +
           `<td class="text-center">${logoHtml}</td>`;
         previewBody.appendChild(tr);
@@ -1373,7 +1383,7 @@
         if (isReachable) {
           active++;
           const now = new Date().toISOString();
-          await addToBatch({ name: ch.name, category: ch.category, logoUrl: ch.logoUrl || '', sources: [{ name: ch.name + ' - Source 1', url: ch.url, resolutionQuality: 'FHD' }], isLive: true, createdAt: now, updatedAt: now });
+          await addToBatch({ name: ch.name, category: ch.category, logoUrl: ch.logoUrl || '', country: $('m3uCountry').value.trim(), sources: [{ name: ch.name + ' - Source 1', url: ch.url, resolutionQuality: 'FHD' }], isLive: true, createdAt: now, updatedAt: now });
         } else { dead++; }
         activeCount.textContent = active;
         deadCount.textContent = dead;
@@ -1461,7 +1471,7 @@
           if (!reachable) { dead++; continue; }
           existingUrls.add(entry.url);
           const now = new Date().toISOString();
-          await addToBatch({ name: channelName, category, logoUrl: entry.logo || '', sources: [{ name: channelName + ' - Source 1', url: entry.url, resolutionQuality: 'FHD' }], isLive: true, createdAt: now, updatedAt: now });
+          await addToBatch({ name: channelName, category, logoUrl: entry.logo || '', country: $('globalCountry').value.trim(), sources: [{ name: channelName + ' - Source 1', url: entry.url, resolutionQuality: 'FHD' }], isLive: true, createdAt: now, updatedAt: now });
           saved++;
         }
         await commitBatch();

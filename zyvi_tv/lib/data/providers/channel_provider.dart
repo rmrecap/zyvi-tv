@@ -358,16 +358,17 @@ final customSectionsProvider =
         .collection('app_settings')
         .doc('custom_sections')
         .get()
-        .timeout(const Duration(seconds: 3));
+        .timeout(const Duration(seconds: 10));
     final data = doc.data();
     if (data == null) return [];
     final list = data['sections'] as List<dynamic>? ?? [];
-    return list
+    final sections = list
         .map((e) => CustomSection.fromMap(e as Map<String, dynamic>))
         .where((s) => s.enabled)
         .toList()
       ..sort((a, b) => a.order.compareTo(b.order));
-  } catch (_) {
+    return sections;
+  } catch (e) {
     return [];
   }
 });

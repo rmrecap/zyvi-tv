@@ -57,16 +57,50 @@ class _AdBannerWidgetState extends ConsumerState<AdBannerWidget> {
   @override
   Widget build(BuildContext context) {
     final adManager = ref.watch(adManagerProvider);
-    if (!adManager.canShowBanner || _banner == null) {
-      return const SizedBox.shrink();
-    }
+    final showAd = adManager.canShowBanner && _banner != null;
 
     return Container(
       width: double.infinity,
-      height: 50,
+      height: 60,
       color: AppTheme.surface,
-      child: Center(
-        child: AdWidget(ad: _banner!),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '— Sponsor —',
+            style: TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Expanded(
+            child: showAd
+                ? Center(child: AdWidget(ad: _banner!))
+                : Center(
+                    child: Container(
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceLight,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.microBorder),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'Ad Space Available',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }
